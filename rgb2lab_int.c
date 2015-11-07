@@ -82,7 +82,7 @@ void labLchFromRgbInt(IntTriplet rgb, IntTriplet * lab, IntTriplet * lch)
 
 void rgbLchFromLabInt(IntTriplet lab, IntTriplet * rgb, IntTriplet * lch)
 {
-    *rgb = _roundAndFixRgb(rgbFromLch(_double(lab)));
+    *rgb = _roundAndFixRgb(rgbFromLab(_double(lab)));
     *lch = _fixLch(_round(lchFromLab(_double(lab))));
 }
 
