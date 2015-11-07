@@ -1,6 +1,6 @@
 import rgb2lab;
 import core.time: MonoTime;
-import std.stdio, std.format, std.range, std.conv;
+import std.stdio, std.format, std.range, std.conv, std.array;
 version(writebin)
 {
     import std.file;
@@ -12,28 +12,13 @@ float[3] toFloat(real[3] r) { return [to!float(r[0]), to!float(r[1]), to!float(r
 void main()
 {
     MonoTime startTime, endTime;
-    float [3][] row;
-    auto rowSink = appender(row);
-    float [3][][] plane;
-    auto planeSink = appender(plane);
-    rowSink.reserve(256);
-    planeSink.reserve(256);
 
-    float [3][][][] labFromRgbMap;
-    labFromRgbMap.reserve(256);
+    auto labFromRgbMap = uninitializedArray!(float [3][][][])(256, 256, 256);
     startTime = MonoTime.currTime;
     foreach (r; 0 .. 256)
-    {
-        planeSink.clear();
         foreach (g; 0 .. 256)
-        {
-            rowSink.clear();
             foreach (b; 0 .. 256)
-                rowSink ~= labFromRgb([r / 255.0, g / 255.0, b / 255.0]).toFloat();
-            planeSink ~= rowSink.data.dup;
-        }
-        labFromRgbMap ~= planeSink.data.dup;
-    }
+                labFromRgbMap[r][g][b] = labFromRgb([r / 255.0, g / 255.0, b / 255.0]).toFloat();
     endTime = MonoTime.currTime;
     writefln("Completed %s calls to labFromRgb in %.3f seconds", 256 ^^ 3, (endTime - startTime).total!"msecs" / 1000.0);
     version(writebin) std.file.write("labFromRgb.bin", pack(labFromRgbMap));
@@ -75,21 +60,12 @@ void main()
     mywrite("maxB", maxB, "LArgb", laRgbForMaxB);
     mywrite("minB", minB, "LArgb", laRgbForMinB);
 
-    float [3][][][] rgbFromLabMap;
-    rgbFromLabMap.reserve(256);
+    auto rgbFromLabMap = uninitializedArray!(float [3][][][])(101, 256, 256);
     startTime = MonoTime.currTime;
     foreach (l; 0 .. 101)
-    {
-        planeSink.clear();
         foreach (a; -128 .. 128)
-        {
-            rowSink.clear();
             foreach (b; -128 .. 128)
-                rowSink ~= rgbFromLab([l, a, b]).toFloat();
-            planeSink ~= rowSink.data;
-        }
-        rgbFromLabMap ~= planeSink.data;
-    }
+                rgbFromLabMap[l][a + 128][b + 128] = rgbFromLab([l, a, b]).toFloat();
     endTime = MonoTime.currTime;
     writefln("Completed %s calls to rgbFromLab in %.3f seconds", 101 * 256 * 256, (endTime - startTime).total!"msecs" / 1000.0);
     version(writebin) std.file.write("rgbFromLab.bin", pack(rgbFromLabMap));
