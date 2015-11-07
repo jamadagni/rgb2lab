@@ -2,50 +2,95 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from rgb2lab_int import *
 
-class LabDisplay(QLabel):
+class _LABCH:
+    def __init__(self, L, A, B, C, H):
+        self.L = L ; self.A = A ; self.B = B ; self.C = C ; self.H = H
+    def __str__(self):
+        return "_LABCH(L = {}, A = {}, B = {}, C = {}, H = {})".format(self.L, self.A, self.B, self.C, self.H)
+    def __eq__(self, other):
+        return self.L == other.L and self.A == other.A and self.B == other.B and self.C == other.C and self.H == other.H
+    def copy(self):
+        return _LABCH(self.L, self.A, self.B, self.C, self.H)
 
-    def __init__(self):
+class _LabGraphABC(QLabel):
+
+    def __init__(self, labDisplay, hSize, vSize):
         QLabel.__init__(self)
-        self.setMinimumSize(257, 257)
-        self.image = QImage(257, 257, QImage.Format_ARGB32)
-        self.timer = QTimer() # to delay redraw to avoid costly recalc while typing, fast spinning etc
-        self.timer.setInterval(100) # msecs
-        self.timer.timeout.connect(self.redrawImage)
-        self.values = (None,)
+        self.labDisplay = labDisplay
+        self.setFixedSize(hSize, vSize)
+        self.image = QImage(hSize, vSize, QImage.Format_ARGB32)
+        t = self.redrawImageTimer = QTimer() # to delay redraw to avoid costly recalc while typing, fast spinning etc
+        t.setInterval(100) # msecs
+        t.timeout.connect(self.redrawImage)
+        self.values = None # for redrawPixmap
 
-    def setValues(self, L, A, B, C, H):
-        prevL = self.values[0]
-        self.values = (L, A, B, C, H)
-        if L != prevL:
-            self.setPixmap(QPixmap())
-            self.timer.start()
-        else:
-            self.redrawPixmap()
+    def redrawIfNeeded(self):
+        raise NotImplementedError
 
     def redrawImage(self):
-        self.timer.stop()
-        tableL_ab = makeTableL_ab(self.values[0])
-        L = self.values[0]
-        L_ = L * 255 / 100
-        lColor = qRgba(L_, L_, L_, 127)
+        raise NotImplementedError
+
+    def redrawPixmap(self):
+        raise NotImplementedError
+
+class LabGraphL_ab(_LabGraphABC):
+
+    def __init__(self, labDisplay):
+        _LabGraphABC.__init__(self, labDisplay, 257, 257)
+
+    def redrawIfNeeded(self):
+        if self.values is None: # initial status
+            self.values = self.labDisplay.values.copy()
+            self.redrawImage()
+        elif self.values == self.labDisplay.values:
+            return # no redraw at all
+        else:
+            prevL = self.values.L
+            self.values = self.labDisplay.values.copy()
+            if prevL == self.labDisplay.values.L:
+                self.redrawPixmap() # no redrawImage
+            else:
+                self.redrawImageTimer.start()
+
+    def redrawImage(self):
+        self.redrawImageTimer.stop()
+        L = self.values.L
+        tableL_ab = makeTableL_ab(L)
+        e = L * 255 / 100
+        gray = qRgba(e, e, e, 127)
         for A in range(257):
             for B in range(257):
                 rgb = tableL_ab[A][B]
-                self.image.setPixel(A, 256 - B, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else lColor)
+                self.image.setPixel(A, 256 - B, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else gray)
         self.redrawPixmap()
 
     def redrawPixmap(self):
-        L, A, B, c, h = self.values
-        L_ = ((L + 50) % 101) * 255 / 100
-        lCounterColor = qRgba(L_, L_, L_, 127)
+        e = ((self.values.L + 50) % 101) * 255 / 100
+        contrastiveGray = qRgba(e, e, e, 127)
+        target = QPoint(self.values.A + 128, 256 - (self.values.B + 128))
         pixmap = QPixmap.fromImage(self.image)
-        p = QPainter(pixmap)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(lCounterColor)
-        center = QPoint(128, 128)
-        target = QPoint(A + 128, 256 - (B + 128))
-        p.drawLine(center, target)
-        p.drawEllipse(center, c, c)
-        p.drawEllipse(target, 10, 10)
-        p.end()
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(contrastiveGray)
+        painter.drawEllipse(target, 10, 10)
+        painter.end()
         self.setPixmap(pixmap)
+
+class LabDisplay(QWidget):
+
+    def __init__(self):
+
+        QWidget.__init__(self)
+
+        self.graphL_ab = LabGraphL_ab(self) # 257 A, 257 B
+        self.allGraphs = (self.graphL_ab,)
+
+        l = self.mainLayout = QHBoxLayout()
+        l.addWidget(self.graphL_ab)
+        self.setLayout(l)
+
+        self.values = None
+
+    def setValues(self, L, A, B, C, H):
+        self.values = _LABCH(L, A, B, C, H)
+        for g in self.allGraphs: g.redrawIfNeeded()
