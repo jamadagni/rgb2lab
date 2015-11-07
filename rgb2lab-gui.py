@@ -15,6 +15,9 @@ class MainWindow(QWidget):
         QWidget.__init__(self)
         self.setWindowTitle("sRGB ⟷ Lab ⟷ LCh Converter")
 
+        w = self.parameters = QLabel("sRGB gamut, D65 illuminant, 2° observer")
+        w.setAlignment(Qt.AlignHCenter)
+
         label = self.rgbHexLabel = QLabel("<font color='green'>He&x</font>:")
         edit = self.rgbHexInput = QLineEdit()
         edit.setInputMask("HHHHHH")
@@ -49,28 +52,32 @@ class MainWindow(QWidget):
                 l.addWidget(self.spinLabels[i], r + 1, c * 2)
                 l.addWidget(self.spinBoxes[i], r + 1, c * 2 + 1)
 
-        self.labDisplay = LabDisplay()
+        self.showGraphsCheckBox = QCheckBox("&Show Lab graphs")
         self.colorDisplay = ColorDisplay()
 
-        w = self.parameters = QLabel("sRGB gamut, D65 illuminant, 2° observer")
-        w.setAlignment(Qt.AlignHCenter)
-
         l = QVBoxLayout()
-        l.addLayout(self.grid)
-        l.addWidget(self.labDisplay)
-        l.addWidget(self.colorDisplay)
         l.addWidget(self.parameters)
+        l.addLayout(self.grid)
+        l.addWidget(self.colorDisplay)
+        l.addWidget(self.showGraphsCheckBox)
         self.setLayout(l)
 
-        self.makeConnections()
+        self.labDisplay = LabDisplay(self)
+
+        self.makeColorConnections()
+        for slot in self.labDisplay.setVisible, self.activateWindow, self.raise_, self.rgbHexInput.setFocus:
+            self.showGraphsCheckBox.clicked.connect(slot)
         self.rgbHexInput.setText("ababab")
 
-    def makeConnections(self):
+    def closeEvent(self, event):
+        self.labDisplay.close()
+
+    def makeColorConnections(self):
         self.rgbHexInput.textChanged.connect(self.updateFromRgb)
         for i, box in enumerate(self.spinBoxes):
             box.valueChanged.connect(self.updateFromFnSeq[i // 3])
 
-    def breakConnections(self):
+    def breakColorConnections(self):
         self.rgbHexInput.textChanged.disconnect()
         for b in self.spinBoxes: b.valueChanged.disconnect()
 
@@ -123,7 +130,7 @@ class MainWindow(QWidget):
                 return # don't compute
         L, A, B, l, c, h = labLchFromRgbInt(r, g, b)
         self.labDisplay.setValues(L, A, B, c, h)
-        self.breakConnections()
+        self.breakColorConnections()
         if type(rgb) is str:
             self.writeSpins("RGB", (r, g, b))
         else:
@@ -131,7 +138,7 @@ class MainWindow(QWidget):
         self.writeSpins("LCh", (l, c, h))
         self.writeSpins("Lab", (L, A, B))
         self.updateColor()
-        self.makeConnections()
+        self.makeColorConnections()
 
     def updateFromLch(self):
         try:
@@ -140,12 +147,12 @@ class MainWindow(QWidget):
             return # don't compute
         r, g, b, L, A, B = rgbLabFromLchInt(l, c, h)
         self.labDisplay.setValues(L, A, B, c, h)
-        self.breakConnections()
+        self.breakColorConnections()
         self.writeRgbText(r, g, b)
         self.writeSpins("RGB", (r, g, b))
         self.writeSpins("Lab", (L, A, B))
         self.updateColor()
-        self.makeConnections()
+        self.makeColorConnections()
 
     def updateFromLab(self):
         try:
@@ -154,12 +161,12 @@ class MainWindow(QWidget):
             return # don't compute
         r, g, b, l, c, h = rgbLchFromLabInt(L, A, B)
         self.labDisplay.setValues(L, A, B, c, h)
-        self.breakConnections()
+        self.breakColorConnections()
         self.writeRgbText(r, g, b)
         self.writeSpins("RGB", (r, g, b))
         self.writeSpins("LCh", (l, c, h))
         self.updateColor()
-        self.makeConnections()
+        self.makeColorConnections()
 
     def updateColor(self):
         self.colorDisplay.setColor(QColor(Qt.transparent) if self.rgbHexInput.text() == "" else QColor.fromRgb(*self.readSpins("RGB")))

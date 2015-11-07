@@ -2,71 +2,80 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from rgb2lab_int import *
 
-class _LABCH:
-    def __init__(self, L, A, B, C, H):
-        self.L = L ; self.A = A ; self.B = B ; self.C = C ; self.H = H
-    def __str__(self):
-        return "_LABCH(L = {}, A = {}, B = {}, C = {}, H = {})".format(self.L, self.A, self.B, self.C, self.H)
-    def __eq__(self, other):
-        return self.L == other.L and self.A == other.A and self.B == other.B and self.C == other.C and self.H == other.H
-    def copy(self):
-        return _LABCH(self.L, self.A, self.B, self.C, self.H)
+class LabGraph(QLabel):
 
-class _LabGraphABC(QLabel):
+    def __init__(self, labParent, fixedValName, makeTableFn, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max, transpose = False):
 
-    def __init__(self, labDisplay, hSize, vSize):
+        assert var1Max > var1Min
+        assert var2Max > var2Min
+
         QLabel.__init__(self)
-        self.labDisplay = labDisplay
-        self.setFixedSize(hSize, vSize)
-        self.image = QImage(hSize, vSize, QImage.Format_ARGB32)
+        self.setFrameShape(QFrame.StyledPanel)
+
+        self.labParent = labParent
+        self.fixedValName = fixedValName
+        self.makeTableFn = makeTableFn
+        self.var1Name = var1Name
+        self.var1Min = var1Min
+        self.var1Max = var1Max
+        self.var2Name = var2Name
+        self.var2Min = var2Min
+        self.var2Max = var2Max
+        self.noTranspose = not transpose
+
+        self.var1Span = var1Max - var1Min + 1
+        self.var2Span = var2Max - var2Min + 1
+
+        if self.noTranspose:
+            self.hSize = self.var1Span ; self.vSize = self.var2Span
+        else:
+            self.hSize = self.var2Span ; self.vSize = self.var1Span
+        self.setFixedSize(self.hSize, self.vSize)
+        self.image = QImage(self.hSize, self.vSize, QImage.Format_ARGB32)
+
         t = self.redrawImageTimer = QTimer() # to delay redraw to avoid costly recalc while typing, fast spinning etc
         t.setInterval(100) # msecs
         t.timeout.connect(self.redrawImage)
-        self.values = None # for redrawPixmap
+
+        self.values = None
 
     def redrawIfNeeded(self):
-        raise NotImplementedError
-
-    def redrawImage(self):
-        raise NotImplementedError
-
-    def redrawPixmap(self):
-        raise NotImplementedError
-
-class LabGraphL_ab(_LabGraphABC):
-
-    def __init__(self, labDisplay):
-        _LabGraphABC.__init__(self, labDisplay, 257, 257)
-
-    def redrawIfNeeded(self):
-        if self.values is None: # initial status
-            self.values = self.labDisplay.values.copy()
+        if self.values is None: # initial draw
+            self.values = self.labParent.values.copy()
             self.redrawImage()
-        elif self.values == self.labDisplay.values:
+        elif self.values == self.labParent.values:
             return # no redraw at all
         else:
-            prevL = self.values.L
-            self.values = self.labDisplay.values.copy()
-            if prevL == self.labDisplay.values.L:
+            prevFixedVal = self.values[self.fixedValName]
+            self.values = self.labParent.values.copy()
+            if prevFixedVal == self.labParent.values[self.fixedValName]:
                 self.redrawPixmap() # no redrawImage
             else:
                 self.redrawImageTimer.start()
 
     def redrawImage(self):
         self.redrawImageTimer.stop()
-        L = self.values.L
-        tableL_ab = makeTableL_ab(L)
-        for A in range(257):
-            for B in range(257):
-                rgb = tableL_ab[A][B]
-                self.image.setPixel(A, 256 - B, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent)
+        fixedVal = self.values[self.fixedValName]
+        table = self.makeTableFn(fixedVal)
+        for var1 in range(self.var1Span):
+            for var2 in range(self.var2Span):
+                rgb = table[var1][var2]
+                if self.noTranspose:
+                    x = var1 ; y = self.var2Span - 1 - var2
+                else:
+                    x = var2 ; y = self.var1Span - 1 - var1
+                # varSpan - 1 - var used above for second var since it ascends upwards whereas Y coordinates increases downwards
+                self.image.setPixel(x, y, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent)
         self.redrawPixmap()
 
     def redrawPixmap(self):
         pixmap = QPixmap.fromImage(self.image)
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        target = QPoint(self.values.A + 128, 256 - (self.values.B + 128))
+        if self.noTranspose:
+            target = QPoint(self.values[self.var1Name] - self.var1Min, self.var2Max - self.values[self.var2Name])
+        else:
+            target = QPoint(self.values[self.var2Name] - self.var2Min, self.var1Max - self.values[self.var1Name])
         painter.setPen(QColor(Qt.white))
         painter.drawEllipse(target, 11, 11) # outer circle with inner plus
         for end in (QPoint(4, 0), QPoint(0, 4)):
@@ -82,19 +91,52 @@ class LabGraphL_ab(_LabGraphABC):
 
 class LabDisplay(QWidget):
 
-    def __init__(self):
+    def __init__(self, mainWindow):
 
         QWidget.__init__(self)
+        self.mainWindow = mainWindow
 
-        self.graphL_ab = LabGraphL_ab(self) # 257 A, 257 B
-        self.allGraphs = (self.graphL_ab,)
+        self.graphL_ab = LabGraph(self, "L", makeTableL_ab, "A", -128, +128, "B", -128, +128)
+        self.graphA    = LabGraph(self, "A", makeTableA   , "L",    0,  100, "B", -128, +128)
+        self.graphB    = LabGraph(self, "B", makeTableB   , "L",    0,  100, "A", -128, +128)
+        self.graphL_ch = LabGraph(self, "L", makeTableL_ch, "C",    0,  180, "H",    0,  359, transpose = True)
+        self.graphC    = LabGraph(self, "C", makeTableC   , "L",    0,  100, "H",    0,  359, transpose = True)
+        self.graphH    = LabGraph(self, "H", makeTableH   , "L",    0,  100, "C",    0,  180, transpose = True)
+        self.allGraphs = (self.graphL_ab, self.graphA, self.graphB, self.graphL_ch, self.graphC, self.graphH)
+
+        l = self.leftBottomLayout = QHBoxLayout()
+        l.addWidget(self.graphA)
+        l.addWidget(self.graphB)
+        l = self.leftLayout = QVBoxLayout()
+        l.addWidget(self.graphL_ab)
+        l.addLayout(self.leftBottomLayout)
+
+        l = self.rightLayout = QVBoxLayout()
+        l.addWidget(self.graphL_ch)
+        l.addWidget(self.graphC)
+        l.addWidget(self.graphH, 0, Qt.AlignHCenter)
 
         l = self.mainLayout = QHBoxLayout()
-        l.addWidget(self.graphL_ab)
+        l.addLayout(self.leftLayout)
+        l.addLayout(self.rightLayout)
         self.setLayout(l)
 
         self.values = None
+        self.isShown = False
+
+    def closeEvent(self, event):
+        self.mainWindow.showGraphsCheckBox.setChecked(False)
+
+    def showEvent(self, event):
+        self.isShown = True
+        self.redraw()
+
+    def hideEvent(self, event):
+        self.isShown = False
 
     def setValues(self, L, A, B, C, H):
-        self.values = _LABCH(L, A, B, C, H)
+        self.values = dict(zip("LABCH", (L, A, B, C, H)))
+        if self.isShown: self.redraw()
+
+    def redraw(self):
         for g in self.allGraphs: g.redrawIfNeeded()
