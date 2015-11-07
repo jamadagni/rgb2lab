@@ -1,64 +1,81 @@
-# Valid values are integers in [0, 255] for r, g, b and l; [0, 360) for h; [0, 180] for s
+# Conversions of color values from RGB to LAB/LCH and back
 
-import rgb2lab
-from rgb2lab import *
+from rgb2lab_check import *
+from ctypes import *
 
-def _checkAndScaleRgb(r, g, b):
-    for v in r, g, b:
-        if not (0 <= v <= 255):
-            raise Rgb2LabError("RGB values should be in the range [0, 255].")
-    return tuple(v / 255 for v in (r, g, b))
+def _makeFields(s):
+    return tuple([(c, c_int) for c in s])
 
-# if below forwards don't exist, then items starting with _ are
-# not accessed from other module since they are considered private
-_checkLab = rgb2lab._checkLab
-_checkLch = rgb2lab._checkLch
+class _RGB(Structure): _fields_ = _makeFields("rgb")
+class _LAB(Structure): _fields_ = _makeFields("LAB")
+class _LCH(Structure): _fields_ = _makeFields("lch")
 
-def _round(seq):
-    return tuple(round(v) for v in seq)
+Int3Array = c_int * 3
+class IntTriplet(Union):
+    _anonymous_ = ["rgb", "LAB", "lch"]
+    _fields_ = [("data", Int3Array),
+                ("rgb", _RGB),
+                ("LAB", _LAB),
+                ("lch", _LCH)]
+IntTripletPtr = POINTER(IntTriplet)
 
-def _roundAndFixRgb(rgb):
-    return tuple((-1 if (v < 0 or v > 255) else v) for v in (round(v * 255) for v in rgb))
+def _toIntTriplet(a, b, c):
+    return IntTriplet(Int3Array(a, b, c))
 
-def _fixLch(lch):
-    l, c, h = lch # can't assign to a tuple; will make a new one
-    if c == 0: h = -1 # sometimes c may become 0 by rounding, so need to do this again here
-    return l, c, h
+_lib = CDLL("librgb2lab.so")
+
+def _setSig(fn, restype, argtypes):
+    if restype is not None: fn.restype = restype
+    fn.argtypes = argtypes
+
+for fn in _lib.labFromRgbInt, _lib.rgbFromLabInt, _lib.lchFromRgbInt, _lib.rgbFromLchInt, _lib.lchFromLabInt, _lib.labFromLchInt:
+    _setSig(fn, IntTriplet, [IntTriplet])
+for fn in _lib.labLchFromRgbInt, _lib.rgbLchFromLabInt, _lib.rgbLabFromLchInt:
+    _setSig(fn, None, [IntTriplet, IntTripletPtr, IntTripletPtr])
 
 def labFromRgbInt(r, g, b):
-    r, g, b = _checkAndScaleRgb(r, g, b)
-    return _round(labFromRgb(r, g, b))
+    checkRgb256(r, g, b)
+    return tuple(_lib.labFromRgbInt(_toIntTriplet(r, g, b)).data)
 
 def rgbFromLabInt(l, a, b):
-    _checkLab(l, a, b)
-    return _roundAndFixRgb(rgbFromLab(l, a, b))
+    checkLab(l, a, b)
+    return tuple(_lib.rgbFromLabInt(_toIntTriplet(l, a, b)).data)
 
 def lchFromRgbInt(r, g, b):
-    r, g, b = _checkAndScaleRgb(r, g, b)
-    return _fixLch(_round(lchFromRgb(r, g, b)))
+    checkRgb256(r, g, b)
+    return tuple(_lib.lchFromRgbInt(_toIntTriplet(r, g, b)).data)
 
 def rgbFromLchInt(l, c, h):
-    _checkLch(l, c, h)
-    return _roundAndFixRgb(rgbFromLch(l, c, h))
+    checkLch(l, c, h)
+    return tuple(_lib.rgbFromLchInt(_toIntTriplet(l, c, h)).data)
 
 def lchFromLabInt(l, a, b):
-    _checkLab(l, a, b)
-    return _fixLch(_round(lchFromLab(l, a, b)))
+    checkLab(l, a, b)
+    return tuple(_lib.lchFromLabInt(_toIntTriplet(l, a, b)).data)
 
 def labFromLchInt(l, c, h):
-    _checkLch(l, c, h)
-    return _round(labFromLch(l, c, h))
+    checkLch(l, c, h)
+    return tuple(_lib.labFromLchInt(_toIntTriplet(l, c, h)).data)
 
 def labLchFromRgbInt(r, g, b):
-    r, g, b = _checkAndScaleRgb(r, g, b)
-    l, a, b = labFromRgb(r, g, b)
-    return _round((l, a, b)) + _fixLch(_round(lchFromLab(l, a, b)))
+    checkRgb256(r, g, b)
+    lab = IntTriplet(); lch = IntTriplet()
+    _lib.labLchFromRgbInt(_toIntTriplet(r, g, b), byref(lab), byref(lch))
+    return tuple(lab.data) + tuple(lch.data)
 
 def rgbLchFromLabInt(l, a, b):
-    _checkLab(l, a, b)
-    return _roundAndFixRgb(rgbFromLch(l, a, b)) + _fixLch(_round(lchFromLab(l, a, b)))
+    checkLab(l, a, b)
+    rgb = IntTriplet(); lch = IntTriplet()
+    _lib.rgbLchFromLabInt(_toIntTriplet(l, a, b), byref(rgb), byref(lch))
+    return tuple(rgb.data) + tuple(lch.data)
 
 def rgbLabFromLchInt(l, c, h):
-    _checkLch(l, c, h)
-    l, a, b = labFromLch(l, c, h)
-    return _roundAndFixRgb(rgbFromLab(l, a, b)) + _round((l, a, b))
+    checkLch(l, c, h)
+    rgb = IntTriplet(); lab = IntTriplet()
+    _lib.rgbLabFromLchInt(_toIntTriplet(l, c, h), byref(rgb), byref(lab))
+    return tuple(rgb.data) + tuple(lab.data)
+
+if __name__ == "__main__":
+    L, A, B, l, c, h = labLchFromRgbInt(99, 129, 39)
+    assert (L, A, B) == (50, -25, 43)
+    assert (l, c, h) == (50, 50, 120)
