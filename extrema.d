@@ -7,13 +7,22 @@ version(writebin)
     import msgpack;
 }
 
-float[3] toFloat(real[3] r) { return [to!float(r[0]), to!float(r[1]), to!float(r[2])]; }
+float [3] toFloat(real [3] r, uint scale = 1) { return [(r[0] * scale).to!float, (r[1] * scale).to!float, (r[2] * scale).to!float]; }
+
+void mywrite(string firstLabel, float firstValue, string otherLabels, float [] otherValues)
+{
+    writef("%s = %10.4f at ", firstLabel, firstValue);
+    static string [] otherFormats = ["%10.4f, ", "%10.4f; ", "% 4g, ", "% 4g, ", "% 4g\n"];
+    foreach (l, f, v; zip(otherLabels, otherFormats, otherValues)) write(l, " = ", f.format(v));
+}
 
 void main()
 {
     MonoTime startTime, endTime;
 
+{
     auto labFromRgbMap = uninitializedArray!(float [3][][][])(256, 256, 256);
+    real [3] RGB;
     startTime = MonoTime.currTime;
     foreach (r; parallel(iota(0, 256)))
         foreach (g; 0 .. 256)
@@ -28,8 +37,8 @@ void main()
     float L, A, B;
     float maxL, maxA, maxB;
     float minL, minA, minB;
-    maxL = maxA = maxB = -200; // all values will be above this
-    minL = minA = minB = +200; // all values will be below this
+    maxL = maxA = maxB = -float.infinity; // all values will be above this
+    minL = minA = minB = +float.infinity; // all values will be below this
     startTime = MonoTime.currTime;
     foreach (r; 0 .. 256)
         foreach (g; 0 .. 256)
@@ -47,26 +56,55 @@ void main()
     endTime = MonoTime.currTime;
     writefln("Completed %s loops searching for Lab extrema in %.3f seconds", 256 ^^ 3, (endTime - startTime).total!"msecs" / 1000.0);
 
-    void mywrite(string firstLabel, float firstValue, string otherLabels, float [] otherValues)
-    {
-        writef("%s = %9.4f at ", firstLabel, firstValue);
-        static string [] otherFormats = ["%9.4f, ", "%9.4f; ", "%3g, ", "%3g, ", "%3g\n"];
-        foreach (l, f, v; zip(otherLabels, otherFormats, otherValues)) write(l, " = ", f.format(v));
-    }
     mywrite("maxL", maxL, "ABrgb", abRgbForMaxL);
     mywrite("minL", minL, "ABrgb", abRgbForMinL);
     mywrite("maxA", maxA, "LBrgb", lbRgbForMaxA);
     mywrite("minA", minA, "LBrgb", lbRgbForMinA);
     mywrite("maxB", maxB, "LArgb", laRgbForMaxB);
     mywrite("minB", minB, "LArgb", laRgbForMinB);
+}
 
-    auto rgbFromLabMap = uninitializedArray!(float [3][][][])(101, 256, 256);
+{
+    auto rgbFromLabMap = uninitializedArray!(float [3][][][])(101, 257, 257);
     startTime = MonoTime.currTime;
     foreach (l; parallel(iota(0, 101)))
-        foreach (a; -128 .. 128)
-            foreach (b; -128 .. 128)
-                rgbFromLabMap[l][a + 128][b + 128] = rgbFromLab([l, a, b]).toFloat();
+        foreach (a; -128 .. 129)
+            foreach (b; -128 .. 129)
+                rgbFromLabMap[l][a + 128][b + 128] = rgbFromLab([l, a, b]).toFloat(255); // 255 is scale factor
     endTime = MonoTime.currTime;
-    writefln("Completed %s calls to rgbFromLab in %.3f seconds", 101 * 256 * 256, (endTime - startTime).total!"msecs" / 1000.0);
+    writefln("Completed %s calls to rgbFromLab in %.3f seconds", 101 * 257 * 257, (endTime - startTime).total!"msecs" / 1000.0);
     version(writebin) std.file.write("rgbFromLab.bin", pack(rgbFromLabMap));
+
+    float [5] gbLabForMaxR, gbLabForMinR, rbLabForMaxG, rbLabForMinG, rgLabForMaxB, rgLabForMinB;
+    float [3] RGB;
+    float R, G, B;
+    float maxR, maxG, maxB;
+    float minR, minG, minB;
+    maxR = maxG = maxB = -float.infinity; // all values will be above this
+    minR = minG = minB = +float.infinity; // all values will be below this
+    startTime = MonoTime.currTime;
+    foreach (l; 0 .. 101)
+        foreach (a; -128 .. 129)
+            foreach (b; -128 .. 129)
+            {
+                RGB = rgbFromLabMap[l][a + 128][b + 128];
+                R = RGB[0]; G = RGB[1]; B = RGB[2];
+                if (R > maxR) { maxR = R; gbLabForMaxR = [G, B, l, a, b]; }
+                if (R < minR) { minR = R; gbLabForMinR = [G, B, l, a, b]; }
+                if (G > maxG) { maxG = G; rbLabForMaxG = [R, B, l, a, b]; }
+                if (G < minG) { minG = G; rbLabForMinG = [R, B, l, a, b]; }
+                if (B > maxB) { maxB = B; rgLabForMaxB = [R, G, l, a, b]; }
+                if (B < minB) { minB = B; rgLabForMinB = [R, G, l, a, b]; }
+            }
+    endTime = MonoTime.currTime;
+    writefln("Completed %s loops searching for RGB extrema in %.3f seconds", 101 * 257 * 257, (endTime - startTime).total!"msecs" / 1000.0);
+
+    mywrite("maxR", maxR, "GBlab", gbLabForMaxR);
+    mywrite("minR", minR, "GBlab", gbLabForMinR);
+    mywrite("maxG", maxG, "RBlab", rbLabForMaxG);
+    mywrite("minG", minG, "RBlab", rbLabForMinG);
+    mywrite("maxB", maxB, "RGlab", rgLabForMaxB);
+    mywrite("minB", minB, "RGlab", rgLabForMinB);
+}
+
 }
