@@ -11,7 +11,7 @@ class LabDisplay(QLabel):
         self.setMinimumSize(257, 257)
         self.image = QImage(257, 257, QImage.Format_ARGB32)
         self.timer = QTimer() # to delay redraw to avoid costly recalc while typing
-        self.timer.setInterval(250) # msecs
+        self.timer.setInterval(100) # msecs
         self.timer.timeout.connect(self.redraw)
 
     def setLab(self, L, A, B):
@@ -36,11 +36,12 @@ class LabDisplay(QLabel):
         LC = ((L + 50) % 101) * 255 / 100
         lCounterColor = qRgba(LC, LC, LC, 127)
         t = process_time()
-        for A in range(-128, 129):
-            for B in range(-128, 129):
-                rgb = rgbFromLabInt(L, A, B)
-                self.image.setPixel(A + 128, 256 - (B + 128), lColor if -1 in rgb else qRgb(*rgb))
-        print("{:.2f} secs used for updating Lab image".format(process_time() - t), file = stderr)
+        tableL_ab = makeTableL_ab(L) # takes approx 100 msecs on Intel i3 2nd gen
+        print("{:.2f} secs used for computing L table".format(process_time() - t), file = stderr)
+        for A in range(257):
+            for B in range(257):
+                rgb = tableL_ab[A][B]
+                self.image.setPixel(A, 256 - B, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else lColor)
         p = QPainter(self.image)
         p.setRenderHint(QPainter.Antialiasing)
         p.setPen(lCounterColor)
