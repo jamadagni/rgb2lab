@@ -31,7 +31,7 @@ void main()
     maxL = maxA = maxB = -200; // all values will be above this
     minL = minA = minB = +200; // all values will be below this
     startTime = MonoTime.currTime;
-    foreach (r; parallel(iota(0, 256)))
+    foreach (r; 0 .. 256)
         foreach (g; 0 .. 256)
             foreach (b; 0 .. 256)
             {
