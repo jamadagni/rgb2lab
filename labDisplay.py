@@ -56,23 +56,27 @@ class LabGraphL_ab(_LabGraphABC):
         self.redrawImageTimer.stop()
         L = self.values.L
         tableL_ab = makeTableL_ab(L)
-        e = L * 255 / 100
-        gray = qRgba(e, e, e, 127)
         for A in range(257):
             for B in range(257):
                 rgb = tableL_ab[A][B]
-                self.image.setPixel(A, 256 - B, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else gray)
+                self.image.setPixel(A, 256 - B, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent)
         self.redrawPixmap()
 
     def redrawPixmap(self):
-        e = ((self.values.L + 50) % 101) * 255 / 100
-        contrastiveGray = qRgba(e, e, e, 127)
-        target = QPoint(self.values.A + 128, 256 - (self.values.B + 128))
         pixmap = QPixmap.fromImage(self.image)
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(contrastiveGray)
-        painter.drawEllipse(target, 10, 10)
+        target = QPoint(self.values.A + 128, 256 - (self.values.B + 128))
+        painter.setPen(QColor(Qt.white))
+        painter.drawEllipse(target, 11, 11) # outer circle with inner plus
+        for end in (QPoint(4, 0), QPoint(0, 4)):
+            painter.drawLine(target, target - end)
+            painter.drawLine(target, target + end)
+        painter.setPen(QColor(Qt.black)) # inner circle with outer ticks
+        painter.drawEllipse(target, 9, 9)
+        for start, end in ((QPoint(9, 0), QPoint(5, 0)), (QPoint(0, 9), QPoint(0, 4))):
+            painter.drawLine(target - start, target - end)
+            painter.drawLine(target + start, target + end)
         painter.end()
         self.setPixmap(pixmap)
 
