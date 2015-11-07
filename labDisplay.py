@@ -2,15 +2,14 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from rgb2lab_int import *
 
-class LabGraph(QLabel):
+class LabGraph(QWidget):
 
     def __init__(self, labParent, fixedValName, makeTableFn, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max, transpose = False):
 
         assert var1Max > var1Min
         assert var2Max > var2Min
 
-        QLabel.__init__(self)
-        self.setFrameShape(QFrame.StyledPanel)
+        QWidget.__init__(self)
 
         self.labParent = labParent
         self.fixedValName = fixedValName
@@ -25,17 +24,32 @@ class LabGraph(QLabel):
 
         self.var1Span = var1Max - var1Min + 1
         self.var2Span = var2Max - var2Min + 1
+        var1Text = "{} [{} to {}]".format(var1Name, var1Min, var1Max)
+        var2Text = "{} [{} to {}]".format(var2Name, var2Min, var2Max)
 
         if self.noTranspose:
-            self.hSize = self.var1Span ; self.vSize = self.var2Span
+            self.xSize = self.var1Span ; self.ySize = self.var2Span
+            xText = var1Text ; yText = var2Text
         else:
-            self.hSize = self.var2Span ; self.vSize = self.var1Span
-        self.setFixedSize(self.hSize, self.vSize)
-        self.image = QImage(self.hSize, self.vSize, QImage.Format_ARGB32)
+            self.xSize = self.var2Span ; self.ySize = self.var1Span
+            xText = var2Text ; yText = var1Text
+        self.image = QImage(self.xSize, self.ySize, QImage.Format_ARGB32)
 
         t = self.redrawImageTimer = QTimer() # to delay redraw to avoid costly recalc while typing, fast spinning etc
         t.setInterval(100) # msecs
         t.timeout.connect(self.redrawImage)
+
+        w = self.graph = QLabel()
+        w.setFixedSize(self.xSize, self.ySize)
+        w.setFrameShape(QFrame.StyledPanel)
+
+        w = self.caption = QLabel("fixed {}, X: {}, Y: {}".format(fixedValName, xText, yText))
+        w.setAlignment(Qt.AlignHCenter)
+
+        l = self.mainLayout = QVBoxLayout()
+        l.addWidget(self.graph, 0, Qt.AlignHCenter)
+        l.addWidget(self.caption, 0, Qt.AlignHCenter)
+        self.setLayout(l)
 
         self.values = None
 
@@ -87,7 +101,7 @@ class LabGraph(QLabel):
             painter.drawLine(target - start, target - end)
             painter.drawLine(target + start, target + end)
         painter.end()
-        self.setPixmap(pixmap)
+        self.graph.setPixmap(pixmap)
 
 class LabDisplay(QWidget):
 
@@ -97,24 +111,22 @@ class LabDisplay(QWidget):
         self.mainWindow = mainWindow
 
         self.graphL_ab = LabGraph(self, "L", makeTableL_ab, "A", -128, +128, "B", -128, +128)
-        self.graphA    = LabGraph(self, "A", makeTableA   , "L",    0,  100, "B", -128, +128)
-        self.graphB    = LabGraph(self, "B", makeTableB   , "L",    0,  100, "A", -128, +128)
+        self.graphA    = LabGraph(self, "A", makeTableA   , "L",    0,  100, "B", -128, +128, transpose = True)
+        self.graphB    = LabGraph(self, "B", makeTableB   , "L",    0,  100, "A", -128, +128, transpose = True)
         self.graphL_ch = LabGraph(self, "L", makeTableL_ch, "C",    0,  180, "H",    0,  359, transpose = True)
         self.graphC    = LabGraph(self, "C", makeTableC   , "L",    0,  100, "H",    0,  359, transpose = True)
         self.graphH    = LabGraph(self, "H", makeTableH   , "L",    0,  100, "C",    0,  180, transpose = True)
         self.allGraphs = (self.graphL_ab, self.graphA, self.graphB, self.graphL_ch, self.graphC, self.graphH)
 
-        l = self.leftBottomLayout = QHBoxLayout()
-        l.addWidget(self.graphA)
-        l.addWidget(self.graphB)
         l = self.leftLayout = QVBoxLayout()
         l.addWidget(self.graphL_ab)
-        l.addLayout(self.leftBottomLayout)
+        l.addWidget(self.graphA)
+        l.addWidget(self.graphB)
 
         l = self.rightLayout = QVBoxLayout()
         l.addWidget(self.graphL_ch)
         l.addWidget(self.graphC)
-        l.addWidget(self.graphH, 0, Qt.AlignHCenter)
+        l.addWidget(self.graphH)
 
         l = self.mainLayout = QHBoxLayout()
         l.addLayout(self.leftLayout)
