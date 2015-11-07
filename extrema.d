@@ -1,6 +1,6 @@
 import rgb2lab;
 import core.time: MonoTime;
-import std.stdio, std.format, std.range, std.conv, std.array;
+import std.stdio, std.format, std.range, std.conv, std.array, std.parallelism;
 version(writebin)
 {
     import std.file;
@@ -15,7 +15,7 @@ void main()
 
     auto labFromRgbMap = uninitializedArray!(float [3][][][])(256, 256, 256);
     startTime = MonoTime.currTime;
-    foreach (r; 0 .. 256)
+    foreach (r; parallel(iota(0, 256)))
         foreach (g; 0 .. 256)
             foreach (b; 0 .. 256)
                 labFromRgbMap[r][g][b] = labFromRgb([r / 255.0, g / 255.0, b / 255.0]).toFloat();
@@ -31,7 +31,7 @@ void main()
     maxL = maxA = maxB = -200; // all values will be above this
     minL = minA = minB = +200; // all values will be below this
     startTime = MonoTime.currTime;
-    foreach (r; 0 .. 256)
+    foreach (r; parallel(iota(0, 256)))
         foreach (g; 0 .. 256)
             foreach (b; 0 .. 256)
             {
@@ -62,7 +62,7 @@ void main()
 
     auto rgbFromLabMap = uninitializedArray!(float [3][][][])(101, 256, 256);
     startTime = MonoTime.currTime;
-    foreach (l; 0 .. 101)
+    foreach (l; parallel(iota(0, 101)))
         foreach (a; -128 .. 128)
             foreach (b; -128 .. 128)
                 rgbFromLabMap[l][a + 128][b + 128] = rgbFromLab([l, a, b]).toFloat();
