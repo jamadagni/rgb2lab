@@ -122,7 +122,7 @@ class MainWindow(QWidget):
             except InvalidInputError:
                 return # don't compute
         L, A, B, l, c, h = labLchFromRgbInt(r, g, b)
-        self.labDisplay.setLab(L, A, B)
+        self.labDisplay.setValues(L, A, B, c, h)
         self.breakConnections()
         if type(rgb) is str:
             self.writeSpins("RGB", (r, g, b))
@@ -135,10 +135,11 @@ class MainWindow(QWidget):
 
     def updateFromLch(self):
         try:
-            r, g, b, L, A, B = rgbLabFromLchInt(*self.readSpins("LCh"))
+            l, c, h = self.readSpins("LCh")
         except InvalidInputError:
             return # don't compute
-        self.labDisplay.setLab(L, A, B)
+        r, g, b, L, A, B = rgbLabFromLchInt(l, c, h)
+        self.labDisplay.setValues(L, A, B, c, h)
         self.breakConnections()
         self.writeRgbText(r, g, b)
         self.writeSpins("RGB", (r, g, b))
@@ -152,7 +153,7 @@ class MainWindow(QWidget):
         except InvalidInputError:
             return # don't compute
         r, g, b, l, c, h = rgbLchFromLabInt(L, A, B)
-        self.labDisplay.setLab(L, A, B)
+        self.labDisplay.setValues(L, A, B, c, h)
         self.breakConnections()
         self.writeRgbText(r, g, b)
         self.writeSpins("RGB", (r, g, b))
