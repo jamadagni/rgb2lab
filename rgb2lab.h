@@ -3,8 +3,8 @@
 typedef union {
     double data[3];
     struct { double r, g, b; };
-    struct { double l, a, B; }; // cap B to silence error
-    struct { double L, c, h; }; // cap L to silence error
+    struct { double L, A, B; };
+    struct { double l, c, h; };
 } DoubleTriplet;
 
 DoubleTriplet rgbFromLab(DoubleTriplet lab);

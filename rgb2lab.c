@@ -91,9 +91,9 @@ static DoubleTriplet labFromXyz(DoubleTriplet xyz)
 //     2) Output: [0, 1] for each component
 static DoubleTriplet xyzFromLab(DoubleTriplet lab)
 {
-    double y = (lab.l + 16) / 116.0,
-           x = lab.a / 500.0 + y,
-           z = y - lab.b / 200.0;
+    double y = (lab.L + 16) / 116.0,
+           x = lab.A / 500.0 + y,
+           z = y - lab.B / 200.0;
     DoubleTriplet xyz = {{x, y, z}};
     for (int i = 0; i < 3; ++i)
     {
@@ -133,11 +133,11 @@ Note: `L` is unchanged
 */
 DoubleTriplet lchFromLab(DoubleTriplet lab)
 {
-    DoubleTriplet temp = {{lab.l, 0, -1}};
-    if (lab.a != 0 || lab.b != 0)
+    DoubleTriplet temp = {{lab.L, 0, -1}};
+    if (lab.A != 0 || lab.B != 0)
     {
-        temp.c = hypot(lab.a, lab.b);
-        temp.h = atan2(lab.b, lab.a) * 180 / PI;
+        temp.c = hypot(lab.A, lab.B);
+        temp.h = atan2(lab.B, lab.A) * 180 / PI;
         if (temp.h < 0) temp.h += 360; // +360 needed since atan2 outputs in ±π
     }
     return temp;
@@ -160,8 +160,8 @@ DoubleTriplet labFromLch(DoubleTriplet lch)
         return temp; // if lch.c == 0, then {l, 0, 0} will be returned which is correct
     }
     lch.h *= PI / 180;
-    temp.a = lch.c * cos(lch.h);
-    temp.b = lch.c * sin(lch.h);
+    temp.A = lch.c * cos(lch.h);
+    temp.B = lch.c * sin(lch.h);
     return temp;
 }
 
