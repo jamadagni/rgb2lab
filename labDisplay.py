@@ -23,6 +23,7 @@ class LabGraph(QWidget):
 
         self.var1Span = var1Max - var1Min + 1
         self.var2Span = var2Max - var2Min + 1
+        self.totalPoints = self.var1Span * self.var2Span
 
         self.image = QImage(self.var1Span, self.var2Span, QImage.Format_ARGB32)
 
@@ -34,8 +35,8 @@ class LabGraph(QWidget):
         w.setFixedSize(self.var1Span, self.var2Span)
         w.setFrameShape(QFrame.StyledPanel)
 
-        self.captionFmtString = "{} = {{}}; X: {} [{} to {}], Y: {} [{} to {}]".format(
-                                fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max)
+        self.captionFmtString = "{} = {{}}; X: {} [{} to {}], Y: {} [{} to {}]\n{{}}% ({{}} of {}) points in gamut".format(
+                                fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max, self.totalPoints)
         w = self.caption = QLabel()
         w.setAlignment(Qt.AlignHCenter)
 
@@ -63,8 +64,8 @@ class LabGraph(QWidget):
     def redrawImage(self):
         self.redrawImageTimer.stop()
         fixedVal = self.values[self.fixedValName]
-        self.caption.setText(self.captionFmtString.format(fixedVal))
         table = self.makeTableFn(fixedVal)
+        self.caption.setText(self.captionFmtString.format(fixedVal, round(100 * table.inGamutCount / self.totalPoints, 2), table.inGamutCount))
         for var1 in range(self.var1Span):
             for var2 in range(self.var2Span):
                 rgb = table[var1][var2]
