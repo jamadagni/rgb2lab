@@ -138,8 +138,12 @@ real [3] labFromLch(real [3] lch)
 {
     import std.math: cos, sin, PI;
     real l = lch[0], c = lch[1], h = lch[2];
-    if (h == -1) h = 0;
-    else h *= PI / 180;
+    if (h == -1)
+    {
+        if (c != 0) return new real[3]; // all NaNs
+        return [l, 0, 0]; // if c == 0
+    }
+    h *= PI / 180;
     return [l, c * cos(h), c * sin(h)];
 }
 

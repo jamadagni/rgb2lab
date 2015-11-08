@@ -169,7 +169,7 @@ int fillTableC_HL(TinyRgb table[360][101], int c)
 
 int fillTableH_CL(TinyRgb table[181][101], int h)
 {
-    if (h < 0 || h > 359) return -1;
+    if (h < -1 || h > 359) return -1;
     int validRGBs = 0;
     fillTableWorker(H_CL, h, /* c min max */ 0, 180, /* l min max */ 0, 100, &rgbFromLchInt, table, &validRGBs);
     return validRGBs;

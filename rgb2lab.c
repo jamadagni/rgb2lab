@@ -153,9 +153,15 @@ Note: `L` is unchanged
 */
 DoubleTriplet labFromLch(DoubleTriplet lch)
 {
-    if (lch.h == -1) lch.h = 0;
-    else lch.h *= PI / 180;
-    DoubleTriplet temp = {{lch.l, lch.c * cos(lch.h), lch.c * sin(lch.h)}};
+    DoubleTriplet temp = {{lch.l, 0, 0}};
+    if (lch.h == -1)
+    {
+        if (lch.c != 0) temp.l = nan(""); // illegal input; give illegal output to signal it
+        return temp; // if lch.c == 0, then {l, 0, 0} will be returned which is correct
+    }
+    lch.h *= PI / 180;
+    temp.a = lch.c * cos(lch.h);
+    temp.b = lch.c * sin(lch.h);
     return temp;
 }
 
