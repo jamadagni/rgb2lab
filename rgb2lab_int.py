@@ -13,18 +13,19 @@ class _LAB(Structure): _fields_ = _makeFields("LAB")
 class _LCH(Structure): _fields_ = _makeFields("lch")
 
 # main types used
-Int3Array = c_int * 3
+
+_Int3Array = c_int * 3
 class IntTriplet(Union):
     _anonymous_ = ["rgb", "LAB", "lch"]
-    _fields_ = [("data", Int3Array),
+    _fields_ = [("data", _Int3Array),
                 ("rgb", _RGB),
                 ("LAB", _LAB),
                 ("lch", _LCH)]
 IntTripletPtr = POINTER(IntTriplet)
+def _toIntTriplet(a, b, c): return IntTriplet(_Int3Array(a, b, c))
+
 class TinyRgb(Structure):
     _fields_ = tuple((f, c_ubyte) for f in ("valid", "r", "g", "b"))
-
-def _toIntTriplet(a, b, c): return IntTriplet(Int3Array(a, b, c))
 
 _lib = CDLL("librgb2lab.so")
 
@@ -86,52 +87,25 @@ def rgbLabFromLchInt(l, c, h):
     return tuple(rgb.data) + tuple(lab.data)
 
 #
-# fillTable functions
+# makeTable functions
 #
 
-# NOTE: Order of multiplying type by dimensions below is opposite to declaring array in C
+def _makeMakeTableFn(fillTableFn, var1Span, var2Span):
+    TinyRgbTable = TinyRgb * var2Span * var1Span
+    # NOTE: order of multiplying type by dimension sizes above is opposite to declaring array in C
+    fillTableFn.argtypes = [TinyRgbTable, c_int]
+    def fn(v):
+        table = TinyRgbTable()
+        fillTableFn(table, v)
+        return table
+    return fn
 
-TinyRgb_257_257 = TinyRgb * 257 * 257
-_lib.fillTableL_AB.argtypes = [TinyRgb_257_257, c_int]
-def makeTableL_AB(l):
-    arr = TinyRgb_257_257()
-    _lib.fillTableL_AB(arr, l)
-    return arr
-
-TinyRgb_257_101 = TinyRgb * 101 * 257
-_lib.fillTableA_BL.argtypes = [TinyRgb_257_101, c_int]
-def makeTableA_BL(a):
-    arr = TinyRgb_257_101()
-    _lib.fillTableA_BL(arr, a)
-    return arr
-
-TinyRgb_257_101 = TinyRgb * 101 * 257
-_lib.fillTableB_AL.argtypes = [TinyRgb_257_101, c_int]
-def makeTableB_AL(b):
-    arr = TinyRgb_257_101()
-    _lib.fillTableB_AL(arr, b)
-    return arr
-
-TinyRgb_360_181 = TinyRgb * 181 * 360
-_lib.fillTableL_HC.argtypes = [TinyRgb_360_181, c_int]
-def makeTableL_HC(l):
-    arr = TinyRgb_360_181()
-    _lib.fillTableL_HC(arr, l)
-    return arr
-
-TinyRgb_360_101 = TinyRgb * 101 * 360
-_lib.fillTableC_HL.argtypes = [TinyRgb_360_101, c_int]
-def makeTableC_HL(c):
-    arr = TinyRgb_360_101()
-    _lib.fillTableC_HL(arr, c)
-    return arr
-
-TinyRgb_181_101 = TinyRgb * 101 * 181
-_lib.fillTableH_CL.argtypes = [TinyRgb_181_101, c_int]
-def makeTableH_CL(h):
-    arr = TinyRgb_181_101()
-    _lib.fillTableH_CL(arr, h)
-    return arr
+makeTableL_AB = _makeMakeTableFn(_lib.fillTableL_AB, 257, 257)
+makeTableA_BL = _makeMakeTableFn(_lib.fillTableA_BL, 257, 101)
+makeTableB_AL = _makeMakeTableFn(_lib.fillTableB_AL, 257, 101)
+makeTableL_HC = _makeMakeTableFn(_lib.fillTableL_HC, 360, 181)
+makeTableC_HL = _makeMakeTableFn(_lib.fillTableC_HL, 360, 101)
+makeTableH_CL = _makeMakeTableFn(_lib.fillTableH_CL, 181, 101)
 
 if __name__ == "__main__":
     L, A, B, l, c, h = labLchFromRgbInt(99, 129, 39)
