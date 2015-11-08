@@ -43,7 +43,8 @@ class LabGraph(QWidget):
         w.setFixedSize(self.xSize, self.ySize)
         w.setFrameShape(QFrame.StyledPanel)
 
-        w = self.caption = QLabel("fixed {}, X: {}, Y: {}".format(fixedValName, xText, yText))
+        self.captionFmtString = "{} = {{}}; X: {}, Y: {}".format(fixedValName, xText, yText)
+        w = self.caption = QLabel()
         w.setAlignment(Qt.AlignHCenter)
 
         l = self.mainLayout = QVBoxLayout()
@@ -70,6 +71,7 @@ class LabGraph(QWidget):
     def redrawImage(self):
         self.redrawImageTimer.stop()
         fixedVal = self.values[self.fixedValName]
+        self.caption.setText(self.captionFmtString.format(fixedVal))
         table = self.makeTableFn(fixedVal)
         for var1 in range(self.var1Span):
             for var2 in range(self.var2Span):
@@ -108,6 +110,8 @@ class LabDisplay(QWidget):
     def __init__(self, mainWindow):
 
         QWidget.__init__(self)
+        self.setWindowTitle("RGB2LAB GUI: LABCH Graphs")
+
         self.mainWindow = mainWindow
 
         self.graphL_ab = LabGraph(self, "L", makeTableL_ab, "A", -128, +128, "B", -128, +128)

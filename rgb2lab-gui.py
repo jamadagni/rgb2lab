@@ -13,7 +13,7 @@ class MainWindow(QWidget):
     def __init__(self):
 
         QWidget.__init__(self)
-        self.setWindowTitle("sRGB ⟷ Lab ⟷ LCh Converter")
+        self.setWindowTitle("RGB2LAB GUI")
 
         w = self.parameters = QLabel("sRGB gamut, D65 illuminant, 2° observer")
         w.setAlignment(Qt.AlignHCenter)
@@ -24,21 +24,25 @@ class MainWindow(QWidget):
         edit.setPlaceholderText("out of gamut")
         label.setBuddy(edit)
 
-        self.systemOrder = ("RGB", "LCh", "Lab")
-        self.updateFromFnSeq = (self.updateFromRgb, self.updateFromLch, self.updateFromLab)
-        self.spinLabels = [QLabel("<font color='green'>&" + c + "</font>:") for c in "RGBLCh"] + [QLabel("&" + c + ":") for c in "Lab"]
+        def colorLabels(chars): return [QLabel("<font color='green'>&" + c + "</font>:") for c in chars]
+        def plainLabels(chars): return [QLabel("&" + c + ":") for c in chars]
+
+        self.systemOrder = ("RGB", "Lab", "LCh")
+        self.updateFromFnSeq = (self.updateFromRgb, self.updateFromLab, self.updateFromLch)
+        self.spinLabels = colorLabels("RGB") + plainLabels("Lab") + colorLabels("LCh")
+
         self.spinBoxes = [QSpinBox() for l in self.spinLabels]
         for label, box in zip(self.spinLabels, self.spinBoxes):
             label.setBuddy(box)
 
-        for box, maxVal in zip(self.spinBoxes, (255, 255, 255, 100, 180, 359, 100, 128, 128)):
+        for box, maxVal in zip(self.spinBoxes, (255, 255, 255, 100, 128, 128, 100, 180, 359)):
             box.setMaximum(maxVal)
-        for i in -2, -1: # a and b positions
+        for i in 4, 5: # a and b positions
             self.spinBoxes[i].setMinimum(-128)
         for box in self.spinBoxes[:3]: # RGB positions
             box.setMinimum(-1)
             box.setSpecialValueText("oog")
-        box = self.spinBoxes[5] # h position
+        box = self.spinBoxes[-1] # h position
         box.setMinimum(-1)
         box.setSpecialValueText("nil")
         box.setWrapping(True)
@@ -140,20 +144,6 @@ class MainWindow(QWidget):
         self.updateColor()
         self.makeColorConnections()
 
-    def updateFromLch(self):
-        try:
-            l, c, h = self.readSpins("LCh")
-        except InvalidInputError:
-            return # don't compute
-        r, g, b, L, A, B = rgbLabFromLchInt(l, c, h)
-        self.labDisplay.setValues(L, A, B, c, h)
-        self.breakColorConnections()
-        self.writeRgbText(r, g, b)
-        self.writeSpins("RGB", (r, g, b))
-        self.writeSpins("Lab", (L, A, B))
-        self.updateColor()
-        self.makeColorConnections()
-
     def updateFromLab(self):
         try:
             L, A, B = self.readSpins("Lab")
@@ -165,6 +155,20 @@ class MainWindow(QWidget):
         self.writeRgbText(r, g, b)
         self.writeSpins("RGB", (r, g, b))
         self.writeSpins("LCh", (l, c, h))
+        self.updateColor()
+        self.makeColorConnections()
+
+    def updateFromLch(self):
+        try:
+            l, c, h = self.readSpins("LCh")
+        except InvalidInputError:
+            return # don't compute
+        r, g, b, L, A, B = rgbLabFromLchInt(l, c, h)
+        self.labDisplay.setValues(L, A, B, c, h)
+        self.breakColorConnections()
+        self.writeRgbText(r, g, b)
+        self.writeSpins("RGB", (r, g, b))
+        self.writeSpins("Lab", (L, A, B))
         self.updateColor()
         self.makeColorConnections()
 
