@@ -4,7 +4,7 @@ from rgb2lab_int import *
 
 class LabGraph(QWidget):
 
-    def __init__(self, labParent, fixedValName, makeTableFn, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max, transpose = False):
+    def __init__(self, labParent, makeTableFn, fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max):
 
         assert var1Max > var1Min
         assert var2Max > var2Min
@@ -12,38 +12,30 @@ class LabGraph(QWidget):
         QWidget.__init__(self)
 
         self.labParent = labParent
-        self.fixedValName = fixedValName
         self.makeTableFn = makeTableFn
+        self.fixedValName = fixedValName
         self.var1Name = var1Name
         self.var1Min = var1Min
         self.var1Max = var1Max
         self.var2Name = var2Name
         self.var2Min = var2Min
         self.var2Max = var2Max
-        self.noTranspose = not transpose
 
         self.var1Span = var1Max - var1Min + 1
         self.var2Span = var2Max - var2Min + 1
-        var1Text = "{} [{} to {}]".format(var1Name, var1Min, var1Max)
-        var2Text = "{} [{} to {}]".format(var2Name, var2Min, var2Max)
 
-        if self.noTranspose:
-            self.xSize = self.var1Span ; self.ySize = self.var2Span
-            xText = var1Text ; yText = var2Text
-        else:
-            self.xSize = self.var2Span ; self.ySize = self.var1Span
-            xText = var2Text ; yText = var1Text
-        self.image = QImage(self.xSize, self.ySize, QImage.Format_ARGB32)
+        self.image = QImage(self.var1Span, self.var2Span, QImage.Format_ARGB32)
 
         t = self.redrawImageTimer = QTimer() # to delay redraw to avoid costly recalc while typing, fast spinning etc
         t.setInterval(100) # msecs
         t.timeout.connect(self.redrawImage)
 
         w = self.graph = QLabel()
-        w.setFixedSize(self.xSize, self.ySize)
+        w.setFixedSize(self.var1Span, self.var2Span)
         w.setFrameShape(QFrame.StyledPanel)
 
-        self.captionFmtString = "{} = {{}}; X: {}, Y: {}".format(fixedValName, xText, yText)
+        self.captionFmtString = "{} = {{}}; X: {} [{} to {}], Y: {} [{} to {}]".format(
+                                fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max)
         w = self.caption = QLabel()
         w.setAlignment(Qt.AlignHCenter)
 
@@ -76,22 +68,15 @@ class LabGraph(QWidget):
         for var1 in range(self.var1Span):
             for var2 in range(self.var2Span):
                 rgb = table[var1][var2]
-                if self.noTranspose:
-                    x = var1 ; y = self.var2Span - 1 - var2
-                else:
-                    x = var2 ; y = self.var1Span - 1 - var1
-                # varSpan - 1 - var used above for second var since it ascends upwards whereas Y coordinates increases downwards
-                self.image.setPixel(x, y, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent)
+                self.image.setPixel(var1, self.var2Span - 1 - var2, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent)
+                # var2Span - 1 - var2 needed since we want var2 to increase upwards but Y value increases downwards
         self.redrawPixmap()
 
     def redrawPixmap(self):
         pixmap = QPixmap.fromImage(self.image)
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        if self.noTranspose:
-            target = QPoint(self.values[self.var1Name] - self.var1Min, self.var2Max - self.values[self.var2Name])
-        else:
-            target = QPoint(self.values[self.var2Name] - self.var2Min, self.var1Max - self.values[self.var1Name])
+        target = QPoint(self.values[self.var1Name] - self.var1Min, self.var2Max - self.values[self.var2Name])
         painter.setPen(QColor(Qt.white))
         painter.drawEllipse(target, 11, 11) # outer circle with inner plus
         for end in (QPoint(4, 0), QPoint(0, 4)):
@@ -114,23 +99,23 @@ class LabDisplay(QWidget):
 
         self.mainWindow = mainWindow
 
-        self.graphL_ab = LabGraph(self, "L", makeTableL_ab, "A", -128, +128, "B", -128, +128)
-        self.graphA    = LabGraph(self, "A", makeTableA   , "L",    0,  100, "B", -128, +128, transpose = True)
-        self.graphB    = LabGraph(self, "B", makeTableB   , "L",    0,  100, "A", -128, +128, transpose = True)
-        self.graphL_ch = LabGraph(self, "L", makeTableL_ch, "C",    0,  180, "H",    0,  359, transpose = True)
-        self.graphC    = LabGraph(self, "C", makeTableC   , "L",    0,  100, "H",    0,  359, transpose = True)
-        self.graphH    = LabGraph(self, "H", makeTableH   , "L",    0,  100, "C",    0,  180, transpose = True)
-        self.allGraphs = (self.graphL_ab, self.graphA, self.graphB, self.graphL_ch, self.graphC, self.graphH)
+        self.graphL_AB = LabGraph(self, makeTableL_AB, "L", "A", -128, +128, "B", -128, +128)
+        self.graphA_BL = LabGraph(self, makeTableA_BL, "A", "B", -128, +128, "L",    0,  100)
+        self.graphB_AL = LabGraph(self, makeTableB_AL, "B", "A", -128, +128, "L",    0,  100)
+        self.graphL_HC = LabGraph(self, makeTableL_HC, "L", "H",    0,  359, "C",    0,  180)
+        self.graphC_HL = LabGraph(self, makeTableC_HL, "C", "H",    0,  359, "L",    0,  100)
+        self.graphH_CL = LabGraph(self, makeTableH_CL, "H", "C",    0,  180, "L",    0,  100)
+        self.allGraphs = (self.graphL_AB, self.graphA_BL, self.graphB_AL, self.graphL_HC, self.graphC_HL, self.graphH_CL)
 
         l = self.leftLayout = QVBoxLayout()
-        l.addWidget(self.graphL_ab)
-        l.addWidget(self.graphA)
-        l.addWidget(self.graphB)
+        l.addWidget(self.graphL_AB)
+        l.addWidget(self.graphA_BL)
+        l.addWidget(self.graphB_AL)
 
         l = self.rightLayout = QVBoxLayout()
-        l.addWidget(self.graphL_ch)
-        l.addWidget(self.graphC)
-        l.addWidget(self.graphH)
+        l.addWidget(self.graphL_HC)
+        l.addWidget(self.graphC_HL)
+        l.addWidget(self.graphH_CL)
 
         l = self.mainLayout = QHBoxLayout()
         l.addLayout(self.leftLayout)

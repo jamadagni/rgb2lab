@@ -92,45 +92,45 @@ def rgbLabFromLchInt(l, c, h):
 # NOTE: Order of multiplying type by dimensions below is opposite to declaring array in C
 
 TinyRgb_257_257 = TinyRgb * 257 * 257
-_lib.fillTableL_ab.argtypes = [TinyRgb_257_257, c_int]
-def makeTableL_ab(l):
+_lib.fillTableL_AB.argtypes = [TinyRgb_257_257, c_int]
+def makeTableL_AB(l):
     arr = TinyRgb_257_257()
-    _lib.fillTableL_ab(arr, l)
+    _lib.fillTableL_AB(arr, l)
     return arr
 
-TinyRgb_101_257 = TinyRgb * 257 * 101
-_lib.fillTableA.argtypes = [TinyRgb_101_257, c_int]
-def makeTableA(a):
-    arr = TinyRgb_101_257()
-    _lib.fillTableA(arr, a)
+TinyRgb_257_101 = TinyRgb * 101 * 257
+_lib.fillTableA_BL.argtypes = [TinyRgb_257_101, c_int]
+def makeTableA_BL(a):
+    arr = TinyRgb_257_101()
+    _lib.fillTableA_BL(arr, a)
     return arr
 
-TinyRgb_101_257 = TinyRgb * 257 * 101
-_lib.fillTableB.argtypes = [TinyRgb_101_257, c_int]
-def makeTableB(b):
-    arr = TinyRgb_101_257()
-    _lib.fillTableB(arr, b)
+TinyRgb_257_101 = TinyRgb * 101 * 257
+_lib.fillTableB_AL.argtypes = [TinyRgb_257_101, c_int]
+def makeTableB_AL(b):
+    arr = TinyRgb_257_101()
+    _lib.fillTableB_AL(arr, b)
     return arr
 
-TinyRgb_181_360 = TinyRgb * 360 * 181
-_lib.fillTableL_ch.argtypes = [TinyRgb_181_360, c_int]
-def makeTableL_ch(l):
-    arr = TinyRgb_181_360()
-    _lib.fillTableL_ch(arr, l)
+TinyRgb_360_181 = TinyRgb * 181 * 360
+_lib.fillTableL_HC.argtypes = [TinyRgb_360_181, c_int]
+def makeTableL_HC(l):
+    arr = TinyRgb_360_181()
+    _lib.fillTableL_HC(arr, l)
     return arr
 
-TinyRgb_101_360 = TinyRgb * 360 * 101
-_lib.fillTableC.argtypes = [TinyRgb_101_360, c_int]
-def makeTableC(c):
-    arr = TinyRgb_101_360()
-    _lib.fillTableC(arr, c)
+TinyRgb_360_101 = TinyRgb * 101 * 360
+_lib.fillTableC_HL.argtypes = [TinyRgb_360_101, c_int]
+def makeTableC_HL(c):
+    arr = TinyRgb_360_101()
+    _lib.fillTableC_HL(arr, c)
     return arr
 
-TinyRgb_101_181 = TinyRgb * 181 * 101
-_lib.fillTableH.argtypes = [TinyRgb_101_181, c_int]
-def makeTableH(h):
-    arr = TinyRgb_101_181()
-    _lib.fillTableH(arr, h)
+TinyRgb_181_101 = TinyRgb * 101 * 181
+_lib.fillTableH_CL.argtypes = [TinyRgb_181_101, c_int]
+def makeTableH_CL(h):
+    arr = TinyRgb_181_101()
+    _lib.fillTableH_CL(arr, h)
     return arr
 
 if __name__ == "__main__":

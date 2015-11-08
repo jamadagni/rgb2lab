@@ -19,9 +19,9 @@ void rgbLabFromLchInt(IntTriplet lch, IntTriplet * rgb, IntTriplet * lab);
 
 typedef struct { unsigned char valid, r, g, b; } TinyRgb;
 
-int fillTableL_ab(TinyRgb table[257][257], int l); // 257 A, 257 B
-int fillTableA   (TinyRgb table[101][257], int a); // 101 L, 257 B
-int fillTableB   (TinyRgb table[101][257], int b); // 101 L, 257 A
-int fillTableL_ch(TinyRgb table[181][360], int l); // 181 c, 360 h
-int fillTableC   (TinyRgb table[101][360], int c); // 101 l, 360 h
-int fillTableH   (TinyRgb table[101][181], int h); // 101 l, 181 c
+int fillTableL_AB(TinyRgb table[257][257], int l);
+int fillTableA_BL(TinyRgb table[257][101], int a);
+int fillTableB_AL(TinyRgb table[257][101], int b);
+int fillTableL_HC(TinyRgb table[360][181], int l);
+int fillTableC_HL(TinyRgb table[360][101], int c);
+int fillTableH_CL(TinyRgb table[181][101], int h);

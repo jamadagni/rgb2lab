@@ -8,5 +8,5 @@ int main()
     printf("(%d, %d, %d)\n", tt.L, tt.A, tt.B);
 
     TinyRgb table[257][257];
-    fillTableL_ab(table, 70);
+    fillTableL_AB(table, 70);
 }
