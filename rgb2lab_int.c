@@ -95,7 +95,7 @@ void rgbLabFromLchInt(IntTriplet lch, IntTriplet * rgb, IntTriplet * lab)
 
 typedef enum { L_AB, A_BL, B_AL, L_HC, C_HL, H_CL } TableType; // format: fixed_var1var2
 
-static void fillTableWorker(TableType tt, int fixed, int var1Min, int var1Max, int var2Min, int var2Max, IntTriplet (*fn)(IntTriplet), TinyRgb table[var1Max - var1Min + 1][var2Max - var2Min + 1])
+static void fillTableWorker(TableType tt, int fixed, int var1Min, int var1Max, int var2Min, int var2Max, IntTriplet (*fn)(IntTriplet), TinyRgb table[var1Max - var1Min + 1][var2Max - var2Min + 1], int * validRGBs)
 {
     ++var1Max; ++var2Max; // to stop at max value plus one
     for (int var1 = var1Min; var1 != var1Max; ++var1)
@@ -122,48 +122,55 @@ static void fillTableWorker(TableType tt, int fixed, int var1Min, int var1Max, i
                 t->r = rgb.r;
                 t->g = rgb.g;
                 t->b = rgb.b;
+                ++*validRGBs;
             }
         }
 }
 
 int fillTableL_AB(TinyRgb table[257][257], int l)
 {
-    if (l < 0 || l > 100) return 1;
-    fillTableWorker(L_AB, l, /* a min max */ -128, +128, /* b min max */ -128, +128, &rgbFromLabInt, table);
-    return 0;
+    if (l < 0 || l > 100) return -1;
+    int validRGBs = 0;
+    fillTableWorker(L_AB, l, /* a min max */ -128, +128, /* b min max */ -128, +128, &rgbFromLabInt, table, &validRGBs);
+    return validRGBs;
 }
 
 int fillTableA_BL(TinyRgb table[257][101], int a)
 {
-    if (a < -128 || a > +128) return 1;
-    fillTableWorker(A_BL, a, /* b min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table);
-    return 0;
+    if (a < -128 || a > +128) return -1;
+    int validRGBs = 0;
+    fillTableWorker(A_BL, a, /* b min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table, &validRGBs);
+    return validRGBs;
 }
 
 int fillTableB_AL(TinyRgb table[257][101], int b)
 {
-    if (b < -128 || b > +128) return 1;
-    fillTableWorker(B_AL, b, /* a min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table);
-    return 0;
+    if (b < -128 || b > +128) return -1;
+    int validRGBs = 0;
+    fillTableWorker(B_AL, b, /* a min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table, &validRGBs);
+    return validRGBs;
 }
 
 int fillTableL_HC(TinyRgb table[360][181], int l)
 {
-    if (l < 0 || l > 100) return 1;
-    fillTableWorker(L_HC, l, /* h min max */ 0, 359, /* c min max */ 0, 180, &rgbFromLchInt, table);
-    return 0;
+    if (l < 0 || l > 100) return -1;
+    int validRGBs = 0;
+    fillTableWorker(L_HC, l, /* h min max */ 0, 359, /* c min max */ 0, 180, &rgbFromLchInt, table, &validRGBs);
+    return validRGBs;
 }
 
 int fillTableC_HL(TinyRgb table[360][101], int c)
 {
-    if (c < 0 || c > 180) return 1;
-    fillTableWorker(C_HL, c, /* h min max */ 0, 359, /* l min max */ 0, 100, &rgbFromLchInt, table);
-    return 0;
+    if (c < 0 || c > 180) return -1;
+    int validRGBs = 0;
+    fillTableWorker(C_HL, c, /* h min max */ 0, 359, /* l min max */ 0, 100, &rgbFromLchInt, table, &validRGBs);
+    return validRGBs;
 }
 
 int fillTableH_CL(TinyRgb table[181][101], int h)
 {
-    if (h < 0 || h > 359) return 1;
-    fillTableWorker(H_CL, h, /* c min max */ 0, 180, /* l min max */ 0, 100, &rgbFromLchInt, table);
-    return 0;
+    if (h < 0 || h > 359) return -1;
+    int validRGBs = 0;
+    fillTableWorker(H_CL, h, /* c min max */ 0, 180, /* l min max */ 0, 100, &rgbFromLchInt, table, &validRGBs);
+    return validRGBs;
 }

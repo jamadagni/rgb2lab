@@ -94,9 +94,12 @@ def _makeMakeTableFn(fillTableFn, var1Span, var2Span):
     TinyRgbTable = TinyRgb * var2Span * var1Span
     # NOTE: order of multiplying type by dimension sizes above is opposite to declaring array in C
     fillTableFn.argtypes = [TinyRgbTable, c_int]
+    fillTableFn.restype = c_int # number of validRGBs found
     def fn(v):
         table = TinyRgbTable()
-        fillTableFn(table, v)
+        table.inGamutCount = fillTableFn(table, v)
+        if table.inGamutCount == -1:
+            raise ValueError("Bad value {} provided for function {}".format(v, fillTableFn))
         return table
     return fn
 
