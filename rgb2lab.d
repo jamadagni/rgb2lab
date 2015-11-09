@@ -17,66 +17,73 @@ Note that:
     L, a and b are linear w.r.t. perception
 */
 
+union RealTriplet
+{
+    real [3] data;
+    struct { real r, g, b; }
+    struct { real L, A, B; }
+    struct { real l, c, h; }
+    struct { real x, y, z; }
+    this (real i, real j, real k) { data = [i, j, k]; }
+    alias data this; // for foreach, []op operations etc
+}
+
 private
 {
 
 // Convert RGB values of a color in the sRGB color space to CIE XYZ values
 // Nominal range of the components for both input and output values is [0, 1]
-real [3] xyzFromRgb(real [3] rgb)
+RealTriplet xyzFromRgb(RealTriplet rgb)
 {
     foreach (ref v; rgb) v = (v > 0.04045) ? (((v + 0.055) / 1.055) ^^ 2.4) : (v / 12.92);
-    real r = rgb[0], g = rgb[1], b = rgb[2];
-    return [
-        r * 0.4124564 + g * 0.3575761 + b * 0.1804375,
-        r * 0.2126729 + g * 0.7151522 + b * 0.0721750,
-        r * 0.0193339 + g * 0.1191920 + b * 0.9503041
-        ];
+    return RealTriplet(
+        rgb.r * 0.4124564 + rgb.g * 0.3575761 + rgb.b * 0.1804375,
+        rgb.r * 0.2126729 + rgb.g * 0.7151522 + rgb.b * 0.0721750,
+        rgb.r * 0.0193339 + rgb.g * 0.1191920 + rgb.b * 0.9503041
+        );
         // NOTE: coefficients above only appropriate for D65 illuminant and sRGB color space
 }
 
 // Convert CIE XYZ values of a color to RGB values in the sRGB color space
 // Nominal range of the components for both input and output values is [0, 1]
-real [3] rgbFromXyz(real [3] xyz)
+RealTriplet rgbFromXyz(RealTriplet xyz)
 {
-    real x = xyz[0], y = xyz[1], z = xyz[2];
-    real [3] rgb = [
-        x *  3.2404542 + y * -1.5371385 + z * -0.4985314,
-        x * -0.9692660 + y *  1.8760108 + z *  0.0415560,
-        x *  0.0556434 + y * -0.2040259 + z *  1.0572252
-        ];
+    RealTriplet rgb = RealTriplet(
+        xyz.x *  3.2404542 + xyz.y * -1.5371385 + xyz.z * -0.4985314,
+        xyz.x * -0.9692660 + xyz.y *  1.8760108 + xyz.z *  0.0415560,
+        xyz.x *  0.0556434 + xyz.y * -0.2040259 + xyz.z *  1.0572252
+        );
         // NOTE: coefficients above only appropriate for D65 illuminant and sRGB color space
     foreach (ref v; rgb) v = (v > 0.0031308) ? (1.055 * v ^^ (1 / 2.4) - 0.055) : (v * 12.92);
     return rgb;
 }
 
-enum eps = (6 / 29.0) ^^ 3, kap = (29 / 3.0) ^^ 3;
+enum real eps = (6 / 29.0) ^^ 3, kap = (29 / 3.0) ^^ 3;
 
 // NOTE: only appropriate for D65 illuminant and 2° observer
-real [3] xyzReferenceValues = [0.95047, 1.0, 1.08883];
+enum RealTriplet xyzReferenceValues = RealTriplet(0.95047, 1.0, 1.08883);
 
 // Convert CIE XYZ values of a color to CIE Lab values assuming D65 illuminant and 2° observer
 // The nominal ranges are as follows:
 //     1) Input: [0, 1] for each component
 //     2) Output: 0 to 100 for $(I L); ±128 for $(I a) and $(I b)
-real [3] labFromXyz(real [3] xyz)
+RealTriplet labFromXyz(RealTriplet xyz)
 {
     xyz [] /= xyzReferenceValues [];
     foreach (ref v; xyz) v = (v > eps) ? (v ^^ (1 / 3.0)) : ((kap * v + 16) / 116.0);
-    real x = xyz[0], y = xyz[1], z = xyz[2];
-    return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)];
+    return RealTriplet((116 * xyz.y) - 16, 500 * (xyz.x - xyz.y), 200 * (xyz.y - xyz.z));
 }
 
 // Convert CIE Lab values of a color to CIE XYZ values assuming D65 illuminant and 2° observer
 // The nominal ranges are as follows:
 //     1) Input: 0 to 100 for $(I L); ±128 for $(I a) and $(I b)
 //     2) Output: [0, 1] for each component
-real [3] xyzFromLab(real [3] lab)
+RealTriplet xyzFromLab(RealTriplet lab)
 {
-    real l = lab[0], a = lab[1], b = lab[2],
-         y = (l + 16) / 116.0,
-         x = a / 500.0 + y,
-         z = y - b / 200.0;
-    real [3] xyz = [x, y, z];
+    RealTriplet xyz;
+    xyz.y = (lab.L + 16) / 116.0,
+    xyz.x = lab.A / 500.0 + xyz.y,
+    xyz.z = xyz.y - lab.B / 200.0;
     foreach (ref v; xyz)
     {
         real v3 = v ^^ 3;
@@ -96,7 +103,7 @@ The nominal ranges are as follows:
     1) Input: [0, 1] for each component
     2) Output: 0 to 100 for $(I L); ±128 for $(I a) and $(I b)
 */
-real [3] labFromRgb(real [3] rgb) { return labFromXyz(xyzFromRgb(rgb)); }
+RealTriplet labFromRgb(RealTriplet rgb) { return labFromXyz(xyzFromRgb(rgb)); }
 
 /**
 Convert CIE Lab values of a color to RGB values in the sRGB gamut
@@ -106,7 +113,7 @@ The nominal ranges are as follows:
     1) Input: 0 to 100 for $(I L); ±128 for $(I a) and $(I b)
     2) Output: [0, 1] for each component
 */
-real [3] rgbFromLab(real [3] lab) { return rgbFromXyz(xyzFromLab(lab)); }
+RealTriplet rgbFromLab(RealTriplet lab) { return rgbFromXyz(xyzFromLab(lab)); }
 
 /**
 Convert CIE Lab values of a color to CIE LCH(ab) values
@@ -116,14 +123,13 @@ The nominal ranges are as follows:
     2) Output: 0 to 100 for $(I L); 0 to 128√2 for $(I C) and 0 to 360° for $(I h)
 $(B Note): $(I L) is unchanged
 */
-real [3] lchFromLab(real [3] lab)
+RealTriplet lchFromLab(RealTriplet lab)
 {
+    if (lab.A == 0 && lab.B == 0) return RealTriplet(lab.L, 0, -1);
     import std.math: hypot, atan2, PI;
-    real l = lab[0], a = lab[1], b = lab[2];
-    if (a == 0 && b == 0) return [l, 0, -1];
-    real h = atan2(b, a) * 180 / PI;
-    if (h < 0) h += 360; // +360 needed since atan2 outputs in ±π
-    return [l, hypot(a, b), h];
+    real h = atan2(lab.B, lab.A) * 180 / PI;
+    if (lab.h < 0) lab.h += 360; // +360 needed since atan2 outputs in ±π
+    return RealTriplet(lab.L, hypot(lab.A, lab.B), lab.h);
 }
 
 /**
@@ -134,21 +140,20 @@ The nominal ranges are as follows:
     2) Output: 0 to 100 for $(I L); ±128 for $(I a) and $(I b)
 $(B Note): $(I L) is unchanged
 */
-real [3] labFromLch(real [3] lch)
+RealTriplet labFromLch(RealTriplet lch)
 {
-    import std.math: cos, sin, PI;
-    real l = lch[0], c = lch[1], h = lch[2];
-    if (h == -1)
+    if (lch.h == -1)
     {
-        if (c != 0) return new real[3]; // all NaNs
-        return [l, 0, 0]; // if c == 0
+        if (lch.c != 0) return RealTriplet(); // all NaNs
+        return RealTriplet(lch.l, 0, 0); // if c == 0
     }
-    h *= PI / 180;
-    return [l, c * cos(h), c * sin(h)];
+    import std.math: cos, sin, PI;
+    lch.h *= PI / 180;
+    return RealTriplet(lch.l, lch.c * cos(lch.h), lch.c * sin(lch.h));
 }
 
 /// Convenience function; see lchFromLab and labFromRgb
-real [3] lchFromRgb(real [3] rgb) { return lchFromLab(labFromRgb(rgb)); }
+RealTriplet lchFromRgb(RealTriplet rgb) { return lchFromLab(labFromRgb(rgb)); }
 
 /// Convenience function; see rgbFromLab and labFromLch
-real [3] rgbFromLch(real [3] lch) { return rgbFromLab(labFromLch(lch)); }
+RealTriplet rgbFromLch(RealTriplet lch) { return rgbFromLab(labFromLch(lch)); }

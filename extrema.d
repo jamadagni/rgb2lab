@@ -27,7 +27,7 @@ void main()
     foreach (r; parallel(iota(0, 256)))
         foreach (g; 0 .. 256)
             foreach (b; 0 .. 256)
-                labFromRgbMap[r][g][b] = labFromRgb([r / 255.0, g / 255.0, b / 255.0]).toFloat();
+                labFromRgbMap[r][g][b] = labFromRgb(RealTriplet(r / 255.0, g / 255.0, b / 255.0)).toFloat();
     endTime = MonoTime.currTime;
     writefln("Completed %s calls to labFromRgb in %.3f seconds", 256 ^^ 3, (endTime - startTime).total!"msecs" / 1000.0);
     version(writebin) std.file.write("labFromRgb.bin", pack(labFromRgbMap));
@@ -70,7 +70,7 @@ void main()
     foreach (l; parallel(iota(0, 101)))
         foreach (a; -128 .. 129)
             foreach (b; -128 .. 129)
-                rgbFromLabMap[l][a + 128][b + 128] = rgbFromLab([l, a, b]).toFloat(255); // 255 is scale factor
+                rgbFromLabMap[l][a + 128][b + 128] = rgbFromLab(RealTriplet(l, a, b)).toFloat(255); // 255 is scale factor
     endTime = MonoTime.currTime;
     writefln("Completed %s calls to rgbFromLab in %.3f seconds", 101 * 257 * 257, (endTime - startTime).total!"msecs" / 1000.0);
     version(writebin) std.file.write("rgbFromLab.bin", pack(rgbFromLabMap));
