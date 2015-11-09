@@ -4,7 +4,7 @@ from rgb2lab_int import *
 
 class LabGraph(QWidget):
 
-    def __init__(self, labParent, makeTableFn, fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max):
+    def __init__(self, labParent, colorSpaceName, makeTableFn, fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max):
 
         assert var1Max > var1Min
         assert var2Max > var2Min
@@ -12,6 +12,7 @@ class LabGraph(QWidget):
         QWidget.__init__(self)
 
         self.labParent = labParent
+        self.colorSpaceName = colorSpaceName
         self.makeTableFn = makeTableFn
         self.fixedValName = fixedValName
         self.var1Name = var1Name
@@ -25,7 +26,12 @@ class LabGraph(QWidget):
         self.var2Span = var2Max - var2Min + 1
         self.totalPoints = self.var1Span * self.var2Span
 
-        self.image = QImage(self.var1Span, self.var2Span, QImage.Format_ARGB32)
+        # for caption below and QImage metadata
+        self.axesText = "X: {} [{} to {}], Y: {} [{} to {}]".format(var1Name, var1Min, var1Max, var2Name, var2Min, var2Max)
+
+        i = self.image = QImage(self.var1Span, self.var2Span, QImage.Format_ARGB32)
+        i.setText("Software", "RGB2LAB GUI, (C) 2015, Shriramana Sharma; GPLv3; using Qt 4 via PyQt 4")
+        i.setText("Disclaimer", "Although every effort is made to ensure accuracy, as per the terms of the GPLv3, no guarantee is provided.")
 
         t = self.redrawImageTimer = QTimer() # to delay redraw to avoid costly recalc while typing, fast spinning etc
         t.setInterval(100) # msecs
@@ -35,8 +41,6 @@ class LabGraph(QWidget):
         w.setFixedSize(self.var1Span, self.var2Span)
         w.setFrameShape(QFrame.StyledPanel)
 
-        self.captionFmtString = "{} = {{}}; X: {} [{} to {}], Y: {} [{} to {}]\n{{}}% ({{}} of {}) points in gamut".format(
-                                fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max, self.totalPoints)
         w = self.caption = QLabel()
         w.setAlignment(Qt.AlignHCenter)
 
@@ -65,7 +69,13 @@ class LabGraph(QWidget):
         self.redrawImageTimer.stop()
         fixedVal = self.values[self.fixedValName]
         table = self.makeTableFn(fixedVal)
-        self.caption.setText(self.captionFmtString.format(fixedVal, round(100 * table.inGamutCount / self.totalPoints, 2), table.inGamutCount))
+        coverage = round(100 * table.inGamutCount / self.totalPoints, 2)
+        self.caption.setText("<b>{} = {}</b>; {}<br><b>{}%</b> of graph in gamut".format(self.fixedValName, fixedVal, self.axesText, coverage))
+        titleText = "Graph showing sRGB representation of {} colorspace slice at {} = {}".format(self.colorSpaceName, self.fixedValName, fixedVal)
+        st = self.image.setText
+        st("Title", titleText)
+        st("Description", titleText + "\nAxes: {}\nCoverage: {}% of graph in gamut\nParameters: D65 illuminant, 2 deg. observer".format(self.axesText, coverage))
+        st("Creation Time", QDateTime.currentDateTime().toString(Qt.ISODate))
         for var1 in range(self.var1Span):
             for var2 in range(self.var2Span):
                 rgb = table[var1][var2]
@@ -100,13 +110,29 @@ class LabDisplay(QWidget):
 
         self.mainWindow = mainWindow
 
-        self.graphL_AB = LabGraph(self, makeTableL_AB, "L", "A", -128, +128, "B", -128, +128)
-        self.graphA_BL = LabGraph(self, makeTableA_BL, "A", "B", -128, +128, "L",    0,  100)
-        self.graphB_AL = LabGraph(self, makeTableB_AL, "B", "A", -128, +128, "L",    0,  100)
-        self.graphL_HC = LabGraph(self, makeTableL_HC, "L", "H",    0,  359, "C",    0,  180)
-        self.graphC_HL = LabGraph(self, makeTableC_HL, "C", "H",    0,  359, "L",    0,  100)
-        self.graphH_CL = LabGraph(self, makeTableH_CL, "H", "C",    0,  180, "L",    0,  100)
-        self.allGraphs = (self.graphL_AB, self.graphA_BL, self.graphB_AL, self.graphL_HC, self.graphC_HL, self.graphH_CL)
+        self.graphL_AB = LabGraph(self, "CIE LAB", makeTableL_AB, "L", "A", -128, +128, "B", -128, +128)
+        self.graphA_BL = LabGraph(self, "CIE LAB", makeTableA_BL, "A", "B", -128, +128, "L",    0,  100)
+        self.graphB_AL = LabGraph(self, "CIE LAB", makeTableB_AL, "B", "A", -128, +128, "L",    0,  100)
+        self.graphL_HC = LabGraph(self, "CIE LCH", makeTableL_HC, "L", "H",    0,  359, "C",    0,  180)
+        self.graphC_HL = LabGraph(self, "CIE LCH", makeTableC_HL, "C", "H",    0,  359, "L",    0,  100)
+        self.graphH_CL = LabGraph(self, "CIE LCH", makeTableH_CL, "H", "C",    0,  180, "L",    0,  100)
+
+        self.graphs = (self.graphL_AB, self.graphA_BL, self.graphB_AL, self.graphL_HC, self.graphC_HL, self.graphH_CL)
+        self.graphNames = ("L (AB)", "A", "B", "L (CH)", "C", "H") # order must correspond to above
+
+        self.saveImageRadios = tuple(QRadioButton("Fixed &" + name) for name in self.graphNames)
+        self.saveImageRadios[0].setChecked(True)
+        self.saveImageButton = QPushButton("&Save as...")
+
+        l = self.saveImageGrid = QGridLayout()
+        for col in range(2):
+            for row in range(3):
+                l.addWidget(self.saveImageRadios[col * 3 + row], row, col)
+        l.addWidget(self.saveImageButton, 0, 2, 3, 1)
+
+        w = self.saveImageFrame = QFrame()
+        w.setFrameShape(QFrame.StyledPanel)
+        w.setLayout(self.saveImageGrid)
 
         l = self.leftLayout = QVBoxLayout()
         l.addWidget(self.graphL_AB)
@@ -117,11 +143,14 @@ class LabDisplay(QWidget):
         l.addWidget(self.graphL_HC)
         l.addWidget(self.graphC_HL)
         l.addWidget(self.graphH_CL)
+        l.addWidget(self.saveImageFrame)
 
         l = self.mainLayout = QHBoxLayout()
         l.addLayout(self.leftLayout)
         l.addLayout(self.rightLayout)
         self.setLayout(l)
+
+        self.saveImageButton.clicked.connect(self.saveImage)
 
         self.values = None
         self.isShown = False
@@ -141,4 +170,12 @@ class LabDisplay(QWidget):
         if self.isShown: self.redraw()
 
     def redraw(self):
-        for g in self.allGraphs: g.redrawIfNeeded()
+        for g in self.graphs: g.redrawIfNeeded()
+
+    def saveImage(self):
+        for graphName, graph, saveImageRadio in zip(self.graphNames, self.graphs, self.saveImageRadios):
+            if saveImageRadio.isChecked(): break
+        fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save {} graph".format(graphName), QDir.homePath(), "PNG images (*.png)")
+        if fname == "": return
+        if not graph.image.save(fname, "PNG"):
+            QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the location is not writable. Please try again.")
