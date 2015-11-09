@@ -1,21 +1,26 @@
-/**
-Conversions of color values from RGB to LAB/LCH and back
-
-These functions are based on:
-    http://www.brucelindbloom.com/Math.html
-and the pages linked to therefrom, especially:
-    http://www.brucelindbloom.com/Eqn_RGB_XYZ_Matrix.html
-    http://www.brucelindbloom.com/Eqn_XYZ_to_RGB.html
-    http://www.brucelindbloom.com/Eqn_RGB_to_XYZ.html
-    http://www.brucelindbloom.com/Eqn_XYZ_to_Lab.html
-    http://www.brucelindbloom.com/Eqn_Lab_to_XYZ.html
-    http://www.brucelindbloom.com/Eqn_Lab_to_LCH.html
-    http://www.brucelindbloom.com/Eqn_LCH_to_Lab.html
-Note that:
-    R, G and B are linear w.r.t. device output
-    X, Y and Z are linear w.r.t. energy
-    L, a and b are linear w.r.t. perception
-*/
+// librgb2lab (D version)
+// ======================
+// Convert color values from RGB to/from CIE LAB/LCH
+// for sRGB gamut, D65 illuminant, 2° observer
+//
+// Copyright (C) 2015, Shriramana Sharma
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+// Credit:
+// These functions are based on formulae and coefficients provided at
+// Bruce Justin Lindbloom's website http://www.brucelindbloom.com/
 
 union RealTriplet
 {
@@ -24,8 +29,8 @@ union RealTriplet
     struct { real L, A, B; }
     struct { real l, c, h; }
     struct { real x, y, z; }
-    this (real i, real j, real k) { data = [i, j, k]; }
-    alias data this; // for foreach, []op operations etc
+    this(real i, real j, real k) { data = [i, j, k]; }
+    alias data this; // for foreach, [] operations etc
 }
 
 private
