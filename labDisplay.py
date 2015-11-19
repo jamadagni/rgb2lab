@@ -125,7 +125,7 @@ class LabDisplay(QWidget):
     def __init__(self, mainWindow):
 
         QWidget.__init__(self)
-        self.setWindowTitle("RGB2LAB GUI: LABCH Graphs")
+        self.setWindowTitle("RGB2LAB GUI: LAB/LCH Graphs")
 
         self.mainWindow = mainWindow
 
@@ -184,8 +184,8 @@ class LabDisplay(QWidget):
     def hideEvent(self, event):
         self.isShown = False
 
-    def setValues(self, L, A, B, C, H):
-        self.values = dict(zip("LABCH", (L, A, B, C, H)))
+    def setValues(self, lab, lch):
+        self.values = dict(zip("LABLCH", lab + lch)) # doesn't matter that L will be overwritten once
         if self.isShown: self.redraw()
 
     def redraw(self):

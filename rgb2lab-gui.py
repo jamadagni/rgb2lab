@@ -112,9 +112,9 @@ class MainWindow(QWidget):
         for l in seq:
             l.setText(l.text().replace(fromColor, toColor))
 
-    def writeRgbText(self, r, g, b):
+    def writeRgbText(self, rgb):
         self.changeLabelColor(self.rgbHexLabel, "green")
-        self.rgbHexInput.setText("" if -1 in (r, g, b) else "".join(hex(c)[2:].zfill(2) for c in (r, g, b)))
+        self.rgbHexInput.setText("" if -1 in rgb else "".join(hex(c)[2:].zfill(2) for c in rgb))
 
     def writeSpins(self, colorSystem, vals):
         start = self.systemOrder.index(colorSystem) * 3
@@ -147,49 +147,49 @@ class MainWindow(QWidget):
                 return
             else:
                 self.changeLabelColor(self.rgbHexLabel, "green")
-                r, g, b = (int(rgb[i * 2 : i * 2 + 2], 16) for i in range(3))
+                rgb = tuple(int(rgb[i * 2 : i * 2 + 2], 16) for i in range(3))
         else: # signal came from one of the RGB spins
             try:
-                r, g, b = self.readSpins("RGB")
+                rgb = self.readSpins("RGB")
             except InvalidInputError:
                 return # don't compute
-        L, A, B, l, c, h = labLchFromRgbInt(r, g, b)
-        self.labDisplay.setValues(L, A, B, c, h)
+        lab, lch = labLchFromRgbInt(rgb)
+        self.labDisplay.setValues(lab, lch)
         self.breakColorConnections()
         if type(rgb) is str:
-            self.writeSpins("RGB", (r, g, b))
+            self.writeSpins("RGB", rgb)
         else:
-            self.writeRgbText(r, g, b)
-        self.writeSpins("LCh", (l, c, h))
-        self.writeSpins("Lab", (L, A, B))
+            self.writeRgbText(rgb)
+        self.writeSpins("LCh", lch)
+        self.writeSpins("Lab", lab)
         self.updateColor()
         self.makeColorConnections()
 
     def updateFromLab(self):
         try:
-            L, A, B = self.readSpins("Lab")
+            lab = self.readSpins("Lab")
         except InvalidInputError:
             return # don't compute
-        r, g, b, l, c, h = rgbLchFromLabInt(L, A, B)
-        self.labDisplay.setValues(L, A, B, c, h)
+        rgb, lch = rgbLchFromLabInt(lab)
+        self.labDisplay.setValues(lab, lch)
         self.breakColorConnections()
-        self.writeRgbText(r, g, b)
-        self.writeSpins("RGB", (r, g, b))
-        self.writeSpins("LCh", (l, c, h))
+        self.writeRgbText(rgb)
+        self.writeSpins("RGB", rgb)
+        self.writeSpins("LCh", lch)
         self.updateColor()
         self.makeColorConnections()
 
     def updateFromLch(self):
         try:
-            l, c, h = self.readSpins("LCh")
+            lch = self.readSpins("LCh")
         except InvalidInputError:
             return # don't compute
-        r, g, b, L, A, B = rgbLabFromLchInt(l, c, h)
-        self.labDisplay.setValues(L, A, B, c, h)
+        rgb, lab = rgbLabFromLchInt(lch)
+        self.labDisplay.setValues(lab, lch)
         self.breakColorConnections()
-        self.writeRgbText(r, g, b)
-        self.writeSpins("RGB", (r, g, b))
-        self.writeSpins("Lab", (L, A, B))
+        self.writeRgbText(rgb)
+        self.writeSpins("RGB", rgb)
+        self.writeSpins("Lab", lab)
         self.updateColor()
         self.makeColorConnections()
 
