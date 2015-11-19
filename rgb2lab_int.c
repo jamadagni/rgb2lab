@@ -21,8 +21,7 @@
 #include "rgb2lab_int.h"
 #include "rgb2lab.h"
 #include <math.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <stdbool.h>
 
 static DoubleTriplet _double(IntTriplet seq)
 {
@@ -113,8 +112,9 @@ void rgbLabFromLchInt(IntTriplet lch, IntTriplet * rgb, IntTriplet * lab)
 
 typedef enum { L_AB, A_BL, B_AL, L_HC, C_HL, H_CL } TableType; // format: fixed_var1var2
 
-static void fillTableWorker(TableType tt, int fixed, int var1Min, int var1Max, int var2Min, int var2Max, IntTriplet (*fn)(IntTriplet), TinyRgb table[var1Max - var1Min + 1][var2Max - var2Min + 1], int * validRGBs)
+static int fillTableWorker(TableType tt, int fixed, int var1Min, int var1Max, int var2Min, int var2Max, IntTriplet (*fn)(IntTriplet), TinyRgb table[var1Max - var1Min + 1][var2Max - var2Min + 1])
 {
+    int validRGBs = 0;
     ++var1Max; ++var2Max; // to stop at max value plus one
     for (int var1 = var1Min; var1 != var1Max; ++var1)
         for (int var2 = var2Min; var2 != var2Max; ++var2)
@@ -140,55 +140,50 @@ static void fillTableWorker(TableType tt, int fixed, int var1Min, int var1Max, i
                 t->r = rgb.r;
                 t->g = rgb.g;
                 t->b = rgb.b;
-                ++*validRGBs;
+                ++validRGBs;
             }
         }
+    return validRGBs;
 }
+
+// strictly speaking there are no limits to the LAB/LCH values but this is for GUI
+static bool _invalidL (int l) { return l <    0 || l > 100; }
+static bool _invalidAB(int a) { return a < -128 || a > 128; }
+static bool _invalidC (int c) { return c <    0 || c > 180; }
+static bool _invalidH (int h) { return h <   -1 || h > 359; }
 
 int fillTableL_AB(TinyRgb table[257][257], int l)
 {
-    if (l < 0 || l > 100) return -1;
-    int validRGBs = 0;
-    fillTableWorker(L_AB, l, /* a min max */ -128, +128, /* b min max */ -128, +128, &rgbFromLabInt, table, &validRGBs);
-    return validRGBs;
+    if (_invalidL(l)) return -1;
+    return fillTableWorker(L_AB, l, /* a min max */ -128, +128, /* b min max */ -128, +128, &rgbFromLabInt, table);
 }
 
 int fillTableA_BL(TinyRgb table[257][101], int a)
 {
-    if (a < -128 || a > +128) return -1;
-    int validRGBs = 0;
-    fillTableWorker(A_BL, a, /* b min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table, &validRGBs);
-    return validRGBs;
+    if (_invalidAB(a)) return -1;
+    return fillTableWorker(A_BL, a, /* b min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table);
 }
 
 int fillTableB_AL(TinyRgb table[257][101], int b)
 {
-    if (b < -128 || b > +128) return -1;
-    int validRGBs = 0;
-    fillTableWorker(B_AL, b, /* a min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table, &validRGBs);
-    return validRGBs;
+    if (_invalidAB(b)) return -1;
+    return fillTableWorker(B_AL, b, /* a min max */ -128, +128, /* l min max */ 0, 100, &rgbFromLabInt, table);
 }
 
 int fillTableL_HC(TinyRgb table[360][181], int l)
 {
-    if (l < 0 || l > 100) return -1;
-    int validRGBs = 0;
-    fillTableWorker(L_HC, l, /* h min max */ 0, 359, /* c min max */ 0, 180, &rgbFromLchInt, table, &validRGBs);
-    return validRGBs;
+    if (_invalidL(l)) return -1;
+    return fillTableWorker(L_HC, l, /* h min max */ 0, 359, /* c min max */ 0, 180, &rgbFromLchInt, table);
 }
 
 int fillTableC_HL(TinyRgb table[360][101], int c)
 {
-    if (c < 0 || c > 180) return -1;
-    int validRGBs = 0;
-    fillTableWorker(C_HL, c, /* h min max */ 0, 359, /* l min max */ 0, 100, &rgbFromLchInt, table, &validRGBs);
-    return validRGBs;
+    if (_invalidC(c)) return -1;
+    return fillTableWorker(C_HL, c, /* h min max */ 0, 359, /* l min max */ 0, 100, &rgbFromLchInt, table);
 }
 
 int fillTableH_CL(TinyRgb table[181][101], int h)
 {
-    if (h < -1 || h > 359) return -1;
-    int validRGBs = 0;
-    fillTableWorker(H_CL, h, /* c min max */ 0, 180, /* l min max */ 0, 100, &rgbFromLchInt, table, &validRGBs);
-    return validRGBs;
+    if (_invalidH(h)) return -1;
+    return fillTableWorker(H_CL, h, /* c min max */ 0, 180, /* l min max */ 0, 100, &rgbFromLchInt, table);
 }
