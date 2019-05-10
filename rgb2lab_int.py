@@ -3,7 +3,7 @@
 # Convert color values from RGB to/from CIE LAB/LCH
 # for sRGB gamut, D65 illuminant, 2° observer
 #
-# Copyright (C) 2015, Shriramana Sharma
+# Copyright (C) 2015, Shriramana Sharma, samjnaa-at-gmail-dot-com
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
