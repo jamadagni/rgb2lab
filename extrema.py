@@ -2,18 +2,8 @@
 
 # Copyright (C) 2015, Shriramana Sharma, samjnaa-at-gmail-dot-com
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Use, modification and distribution are permitted subject to the
+# "BSD-2-Clause"-type license stated in the accompanying file LICENSE.txt
 
 from rgb2lab import *
 from time import process_time
@@ -73,27 +63,3 @@ for l in range(101):
     rgbFromLabMap.append(plane)
 endTime = process_time()
 print("Completed {} calls to rgbFromLab in {:.3f} seconds".format(101 * 257 * 257, endTime - startTime))
-
-maxR = maxG = maxB = float("-inf") # all values will be above this
-minR = minG = minB = float("+inf") # all values will be below this
-startTime = process_time()
-for l in range(101):
-    for a in range(-128, 129):
-        for b in range(-128, 129):
-            RGB = rgbFromLabMap[l][a + 128][b + 128]
-            R = RGB[0] ; G = RGB[1] ; B = RGB[2]
-            if R > maxR: maxR = R ; gbLabForMaxR = [G, B, l, a, b]
-            if R < minR: minR = R ; gbLabForMinR = [G, B, l, a, b]
-            if G > maxG: maxG = G ; rbLabForMaxG = [R, B, l, a, b]
-            if G < minG: minG = G ; rbLabForMinG = [R, B, l, a, b]
-            if B > maxB: maxB = B ; rgLabForMaxB = [R, G, l, a, b]
-            if B < minB: minB = B ; rgLabForMinB = [R, G, l, a, b]
-endTime = process_time()
-print("Completed {} loops searching for RGB extrema in {:.3f} seconds".format(101 * 257 * 257, endTime - startTime))
-
-mywrite("maxR", maxR, "GBlab", gbLabForMaxR)
-mywrite("minR", minR, "GBlab", gbLabForMinR)
-mywrite("maxG", maxG, "RBlab", rbLabForMaxG)
-mywrite("minG", minG, "RBlab", rbLabForMinG)
-mywrite("maxB", maxB, "RGlab", rgLabForMaxB)
-mywrite("minB", minB, "RGlab", rgLabForMinB)
