@@ -131,14 +131,14 @@ class MainWindow(QWidget):
                 self.changeLabelColor(start, "green")
         return x, y, z
 
-    def updateFromRgb(self, rgb):
-        if type(rgb) is str: # signal came from rgbHexInput
-            if len(rgb) != 6: # don't compute until full rgb code is input
+    def updateFromRgb(self, rgbInput):
+        if type(rgbInput) is str: # signal came from rgbHexInput
+            if len(rgbInput) != 6: # don't compute until full rgb code is input
                 self.changeLabelColor(self.rgbHexLabel, "red")
                 return
             else:
                 self.changeLabelColor(self.rgbHexLabel, "green")
-                rgb = tuple(int(rgb[i * 2 : i * 2 + 2], 16) for i in range(3))
+                rgb = tuple(int(rgbInput[i * 2 : i * 2 + 2], 16) for i in range(3))
         else: # signal came from one of the RGB spins
             try:
                 rgb = self.readSpins("RGB")
@@ -147,7 +147,7 @@ class MainWindow(QWidget):
         lab, lch = labLchFromRgbInt(rgb)
         self.labDisplay.setValues(lab, lch)
         self.breakColorConnections()
-        if type(rgb) is str:
+        if type(rgbInput) is str:
             self.writeSpins("RGB", rgb)
         else:
             self.writeRgbText(rgb)
