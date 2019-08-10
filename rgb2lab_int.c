@@ -41,6 +41,7 @@ static IntTriplet _roundAndFixRgb(DoubleTriplet rgb)
 static IntTriplet _fixLch(IntTriplet lch)
 {
     if (lch.c == 0) lch.h = -1; // sometimes c may become 0 by rounding, so need to do this again here
+    if (lch.h == 360) lch.h = 0; // again can happen by rounding
     return lch;
 }
 
