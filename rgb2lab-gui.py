@@ -12,8 +12,9 @@
 # Use, modification and distribution are permitted subject to the
 # "BSD-2-Clause"-type license stated in the accompanying file LICENSE.txt
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 from rgb2lab_int import *
 from colorDisplay import *
 from labDisplay import *
