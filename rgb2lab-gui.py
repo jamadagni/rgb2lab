@@ -7,7 +7,7 @@
 #   for sRGB gamut, D65 illuminant, 2° observer
 # - visualize CIE LAB and CIE LCH colorspaces
 #
-# Copyright (C) 2015, Shriramana Sharma, samjnaa-at-gmail-dot-com
+# Copyright (C) 2019, Shriramana Sharma, samjnaa-at-gmail-dot-com
 #
 # Use, modification and distribution are permitted subject to the
 # "BSD-2-Clause"-type license stated in the accompanying file LICENSE.txt
@@ -17,7 +17,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from rgb2lab_int import *
 from colorDisplay import *
-from labDisplay import *
+from labMultiGraph1D import *
+from labMultiGraph2D import *
 
 class InvalidInputError(RuntimeError): pass # separate class for identification
 
@@ -60,7 +61,7 @@ class MainWindow(QWidget):
         box.setSpecialValueText("nil")
         box.setWrapping(True)
 
-        l = self.grid = QGridLayout()
+        l = self.inputGrid = QGridLayout()
         l.addWidget(self.rgbHexLabel, 0, 0)
         l.addWidget(self.rgbHexInput, 0, 1, 1, 5)
         for r in range(len(self.spinBoxes) // 3):
@@ -69,25 +70,39 @@ class MainWindow(QWidget):
                 l.addWidget(self.spinLabels[i], r + 1, c * 2)
                 l.addWidget(self.spinBoxes[i], r + 1, c * 2 + 1)
 
-        self.showGraphsCheckBox = QCheckBox("&Show Lab graphs")
         self.colorDisplay = ColorDisplay()
+        self.labMultiGraph1D = LabMultiGraph1D(self)
+        self.labMultiGraph2D = LabMultiGraph2D(self)
 
-        l = QVBoxLayout()
+        l = self.layout1 = QVBoxLayout()
         l.addWidget(self.parameters)
-        l.addLayout(self.grid)
+        l.addLayout(self.inputGrid)
+
+        l = self.layout2 = QHBoxLayout()
+        l.addLayout(self.layout1)
         l.addWidget(self.colorDisplay)
-        l.addWidget(self.showGraphsCheckBox)
+
+        l = self.leftLayout = QVBoxLayout()
+        l.addStretch()
+        l.addLayout(self.layout2)
+        l.addStretch()
+        l.addWidget(self.labMultiGraph1D)
+        l.addStretch()
+
+        l = self.mainLayout = QHBoxLayout()
+        l.addLayout(self.leftLayout)
+        l.addWidget(self.labMultiGraph2D)
         self.setLayout(l)
 
-        self.labDisplay = LabDisplay(self)
-
         self.makeColorConnections()
-        for slot in self.labDisplay.setVisible, self.activateWindow, self.raise_, self.rgbHexInput.setFocus:
-            self.showGraphsCheckBox.clicked.connect(slot)
-        self.rgbHexInput.setText("ababab")
+        #for slot in self.labMultiGraph1D.setVisible, self.labMultiGraph2D.setVisible, self.activateWindow, self.raise_, self.rgbHexInput.setFocus:
+            #self.showGraphsCheckBox.clicked.connect(slot)
 
-    def closeEvent(self, event):
-        self.labDisplay.close()
+        self.rgbHexInput.setText("45aa45")
+
+    #def closeEvent(self, event):
+        #self.labMultiGraph1D.close()
+        #self.labMultiGraph2D.close()
 
     def makeColorConnections(self):
         self.rgbHexInput.textChanged.connect(self.updateFromRgb)
@@ -146,7 +161,8 @@ class MainWindow(QWidget):
             except InvalidInputError:
                 return # don't compute
         lab, lch = labLchFromRgbInt(rgb)
-        self.labDisplay.setValues(lab, lch)
+        self.labMultiGraph1D.setValues(lab, lch)
+        self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         if type(rgbInput) is str:
             self.writeSpins("RGB", rgb)
@@ -163,7 +179,8 @@ class MainWindow(QWidget):
         except InvalidInputError:
             return # don't compute
         rgb, lch = rgbLchFromLabInt(lab)
-        self.labDisplay.setValues(lab, lch)
+        self.labMultiGraph1D.setValues(lab, lch)
+        self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         self.writeRgbText(rgb)
         self.writeSpins("RGB", rgb)
@@ -177,7 +194,8 @@ class MainWindow(QWidget):
         except InvalidInputError:
             return # don't compute
         rgb, lab = rgbLabFromLchInt(lch)
-        self.labDisplay.setValues(lab, lch)
+        self.labMultiGraph1D.setValues(lab, lch)
+        self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         self.writeRgbText(rgb)
         self.writeSpins("RGB", rgb)

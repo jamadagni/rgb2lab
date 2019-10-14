@@ -4,7 +4,7 @@
 // Convert color values from RGB to/from CIE LAB/LCH
 // for sRGB gamut, D65 illuminant, 2° observer
 //
-// Copyright (C) 2015, Shriramana Sharma, samjnaa-at-gmail-dot-com
+// Copyright (C) 2019, Shriramana Sharma, samjnaa-at-gmail-dot-com
 //
 // Use, modification and distribution are permitted subject to the
 // "BSD-2-Clause"-type license stated in the accompanying file LICENSE.txt
@@ -29,9 +29,16 @@ void rgbLabFromLchInt(IntTriplet lch, IntTriplet * rgb, IntTriplet * lab);
 
 typedef struct { unsigned char valid, r, g, b; } TinyRgb;
 
-int fillTableL_AB(TinyRgb table[257][257], int l);
-int fillTableA_BL(TinyRgb table[257][101], int a);
-int fillTableB_AL(TinyRgb table[257][101], int b);
-int fillTableL_HC(TinyRgb table[360][181], int l);
-int fillTableC_HL(TinyRgb table[360][101], int c);
-int fillTableH_CL(TinyRgb table[181][101], int h);
+int fillTable_LforAB(TinyRgb table[101], int a, int b);
+int fillTable_AforBL(TinyRgb table[257], int b, int l);
+int fillTable_BforAL(TinyRgb table[257], int a, int l);
+int fillTable_LforHC(TinyRgb table[101], int h, int c);
+int fillTable_CforHL(TinyRgb table[181], int h, int l);
+int fillTable_HforCL(TinyRgb table[360], int c, int l);
+
+int fillTable_ABforL(TinyRgb table[257][257], int l);
+int fillTable_BLforA(TinyRgb table[257][101], int a);
+int fillTable_ALforB(TinyRgb table[257][101], int b);
+int fillTable_HCforL(TinyRgb table[360][181], int l);
+int fillTable_HLforC(TinyRgb table[360][101], int c);
+int fillTable_CLforH(TinyRgb table[181][101], int h);
