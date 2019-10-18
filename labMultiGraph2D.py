@@ -33,6 +33,7 @@ class LabGraph2D(QWidget):
         self.var2Min = var2Min
         self.var2Max = var2Max
 
+        self.graphName = "{}{} for fixed {}".format(var1Name, var2Name, fixedValName)
         self.var1Span = var1Max - var1Min + 1
         self.var2Span = var2Max - var2Min + 1
         self.totalPoints = self.var1Span * self.var2Span
@@ -61,6 +62,15 @@ class LabGraph2D(QWidget):
         self.setLayout(l)
 
         self.values = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            pass
+        elif event.button() == Qt.RightButton:
+            fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save “{}” graph".format(self.graphName), QDir.homePath(), "PNG images (*.png)")[0]
+            if fname == "": return
+            if not self.image.save(fname, "PNG"):
+                QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the path is not writable. Please try again.")
 
     def redrawIfNeeded(self):
         if self.values is None:  # initial draw
@@ -131,22 +141,6 @@ class LabMultiGraph2D(QWidget):
         self.graph_CLforH = LabGraph2D(self, "CIE LCH", makeTable_CLforH, "H", "C",    0,  180, "L",    0,  100)
 
         self.graphs = (self.graph_ABforL, self.graph_BLforA, self.graph_ALforB, self.graph_HCforL, self.graph_HLforC, self.graph_CLforH)
-        self.graphNames = ("L (AB)", "A", "B", "L (CH)", "C", "H")  # order must correspond to above
-
-        self.saveImageLabel = QLabel("Fixed:")
-        self.saveImageRadios = tuple(QRadioButton("&" + name) for name in self.graphNames)
-        self.saveImageRadios[0].setChecked(True)
-        self.saveImageButton = QPushButton("&Save as...")
-
-        l = self.saveImageLayout = QHBoxLayout()
-        l.addWidget(self.saveImageLabel)
-        for w in self.saveImageRadios:
-            l.addWidget(w)
-        l.addWidget(self.saveImageButton)
-
-        w = self.saveImageFrame = QFrame()
-        w.setFrameShape(QFrame.StyledPanel)
-        w.setLayout(self.saveImageLayout)
 
         l = self.leftLayout = QVBoxLayout()
         l.addWidget(self.graph_ABforL)
@@ -158,25 +152,11 @@ class LabMultiGraph2D(QWidget):
         l.addWidget(self.graph_HLforC)
         l.addWidget(self.graph_CLforH)
 
-        l = self.upperLayout = QHBoxLayout()
+        l = self.mainLayout = QHBoxLayout()
         l.addLayout(self.leftLayout)
         l.addLayout(self.rightLayout)
-
-        l = self.mainLayout = QVBoxLayout()
-        l.addLayout(self.upperLayout)
-        l.addWidget(self.saveImageFrame)
         self.setLayout(l)
-
-        self.saveImageButton.clicked.connect(self.saveImage)
 
     def setValues(self, lab, lch):
         self.values = dict(zip("LABLCH", lab + lch))  # doesn't matter that L will be overwritten once
         for g in self.graphs: g.redrawIfNeeded()
-
-    def saveImage(self):
-        for graphName, graph, saveImageRadio in zip(self.graphNames, self.graphs, self.saveImageRadios):
-            if saveImageRadio.isChecked(): break
-        fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save {} graph".format(graphName), QDir.homePath(), "PNG images (*.png)")[0]
-        if fname == "": return
-        if not graph.image.save(fname, "PNG"):
-            QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the location is not writable. Please try again.")

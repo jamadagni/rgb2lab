@@ -32,6 +32,9 @@ class MainWindow(QWidget):
         w = self.parameters = QLabel("sRGB gamut, D65 illuminant, 2° observer")
         w.setAlignment(Qt.AlignHCenter)
 
+        w = self.graphClickLabel = QLabel("Left-click on any graph to move the focus, right-click to save")
+        w.setAlignment(Qt.AlignHCenter)
+
         label = self.rgbHexLabel = QLabel("<font color='green'>He&x</font>:")
         edit = self.rgbHexInput = QLineEdit()
         edit.setInputMask("HHHHHH")
@@ -76,15 +79,19 @@ class MainWindow(QWidget):
 
         l = self.layout1 = QVBoxLayout()
         l.addWidget(self.parameters)
+        l.addSpacing(heightOfGraph1D)
         l.addLayout(self.inputGrid)
 
         l = self.layout2 = QHBoxLayout()
         l.addLayout(self.layout1)
+        l.addSpacing(heightOfGraph1D)
         l.addWidget(self.colorDisplay)
 
         l = self.leftLayout = QVBoxLayout()
         l.addStretch()
         l.addLayout(self.layout2)
+        l.addSpacing(heightOfGraph1D)
+        l.addWidget(self.graphClickLabel)
         l.addStretch()
         l.addWidget(self.labMultiGraph1D)
         l.addStretch()
