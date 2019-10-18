@@ -87,7 +87,7 @@ class LabGraph2D(QWidget):
             self.colorSpaceName, self.fixedValName, fixedVal)
         st = self.image.setText
         st("Title", titleText)
-        st("Description", titleText + "\nAxes: {}\nCoverage: {}% of graph in gamut\nParameters: D65 illuminant, 2 deg. observer".format(self.axesText, coverage))
+        st("Description", titleText + "; Axes: {}; Coverage: {}% of graph in gamut; Parameters: D65 illuminant, 2 deg. observer".format(self.axesText, coverage))
         st("Creation Time", QDateTime.currentDateTime().toString(Qt.ISODate))
         for var1 in range(self.var1Span):
             for var2 in range(self.var2Span):
@@ -176,7 +176,7 @@ class LabMultiGraph2D(QWidget):
     def saveImage(self):
         for graphName, graph, saveImageRadio in zip(self.graphNames, self.graphs, self.saveImageRadios):
             if saveImageRadio.isChecked(): break
-        fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save {} graph".format(graphName), QDir.homePath(), "PNG images (*.png)")
+        fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save {} graph".format(graphName), QDir.homePath(), "PNG images (*.png)")[0]
         if fname == "": return
         if not graph.image.save(fname, "PNG"):
             QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the location is not writable. Please try again.")
