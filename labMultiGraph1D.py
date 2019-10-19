@@ -17,14 +17,14 @@ heightOfGraph1D = 30
 
 class LabGraph1D(QWidget):
 
-    def __init__(self, multiGraph, colorSpaceName, makeTableFn, fixed1Name, fixed2Name, varName, varMin, varMax):
+    def __init__(self, multiGraph, colorNotation, makeTableFn, fixed1Name, fixed2Name, varName, varMin, varMax):
 
         assert varMax > varMin
 
         QWidget.__init__(self, multiGraph)
 
         self.multiGraph = multiGraph
-        self.colorSpaceName = colorSpaceName
+        self.colorNotation = colorNotation
         self.makeTableFn = makeTableFn
         self.fixed1Name = fixed1Name
         self.fixed2Name = fixed2Name
@@ -93,8 +93,9 @@ class LabGraph1D(QWidget):
         coverage = round(100 * table.inGamutCount / self.varSpan, 2)
         self.caption.setText("<b>{} = {}; {} = {}</b>; {}<br><b>{}%</b> of graph in gamut".format(
             self.fixed1Name, fixed1, self.fixed2Name, fixed2, self.axisText, coverage))
-        titleText = "Graph showing sRGB representation of {} colorspace 1D slice at {} = {}, {} = {}".format(
-            self.colorSpaceName, self.fixed1Name, fixed1, self.fixed2Name, fixed2)
+        titleText = "Graph showing sRGB gamut of {} colorspace {} representation 1D slice at {} = {}, {} = {}".format(
+            self.multiGraph.mainWindow.colorSpaceName, "cylindrical" if self.colorNotation == "LCH" else "cartesian",
+            self.fixed1Name, fixed1, self.fixed2Name, fixed2)
         st = self.image.setText
         st("Title", titleText)
         st("Description", titleText + "; Axis: {}; Coverage: {}% of graph in gamut; Parameters: D65 illuminant, 2 deg. observer".format(self.axisText, coverage))
@@ -127,16 +128,15 @@ class LabMultiGraph1D(QWidget):
     def __init__(self, mainWindow):
 
         QWidget.__init__(self)
-        self.setWindowTitle("RGB2LAB GUI: LAB/LCH Graphs")
 
         self.mainWindow = mainWindow
 
-        self.graph_LforAB = LabGraph1D(self, "CIE LAB", makeTable_LforAB, "A", "B", "L",    0,  100)
-        self.graph_AforBL = LabGraph1D(self, "CIE LAB", makeTable_AforBL, "B", "L", "A", -128, +128)
-        self.graph_BforAL = LabGraph1D(self, "CIE LAB", makeTable_BforAL, "A", "L", "B", -128, +128)
-        self.graph_LforHC = LabGraph1D(self, "CIE LCH", makeTable_LforHC, "H", "C", "L",    0,  100)
-        self.graph_CforHL = LabGraph1D(self, "CIE LCH", makeTable_CforHL, "H", "L", "C",    0,  180)
-        self.graph_HforCL = LabGraph1D(self, "CIE LCH", makeTable_HforCL, "C", "L", "H",    0,  359)
+        self.graph_LforAB = LabGraph1D(self, "LAB", makeTable_LforAB, "A", "B", "L",    0,  100)
+        self.graph_AforBL = LabGraph1D(self, "LAB", makeTable_AforBL, "B", "L", "A", -128, +128)
+        self.graph_BforAL = LabGraph1D(self, "LAB", makeTable_BforAL, "A", "L", "B", -128, +128)
+        self.graph_LforHC = LabGraph1D(self, "LCH", makeTable_LforHC, "H", "C", "L",    0,  100)
+        self.graph_CforHL = LabGraph1D(self, "LCH", makeTable_CforHL, "H", "L", "C",    0,  180)
+        self.graph_HforCL = LabGraph1D(self, "LCH", makeTable_HforCL, "C", "L", "H",    0,  359)
 
         self.graphs = (self.graph_LforAB, self.graph_AforBL, self.graph_BforAL, self.graph_LforHC, self.graph_CforHL, self.graph_HforCL)
 
@@ -157,4 +157,5 @@ class LabMultiGraph1D(QWidget):
 
     def setValues(self, lab, lch):
         self.values = dict(zip("LABLCH", lab + lch))  # doesn't matter that L will be overwritten once
-        for g in self.graphs: g.redrawIfNeeded()
+        for g in self.graphs:
+            g.redrawIfNeeded()

@@ -3,9 +3,9 @@
 # RGB2LAB GUI
 # ===========
 #
-# - convert color values from RGB to/from CIE LAB/LCH
+# - convert color values from RGB to/from CIELAB color space
 #   for sRGB gamut, D65 illuminant, 2° observer
-# - visualize CIE LAB and CIE LCH colorspaces
+# - Visualize the color space in cartesian and cylindrical representations
 #
 # Copyright (C) 2019, Shriramana Sharma, samjnaa-at-gmail-dot-com
 #
@@ -20,7 +20,8 @@ from colorDisplay import *
 from labMultiGraph1D import *
 from labMultiGraph2D import *
 
-class InvalidInputError(RuntimeError): pass # separate class for identification
+class InvalidInputError(RuntimeError):
+    pass  # separate class for identification
 
 class MainWindow(QWidget):
 
@@ -29,7 +30,9 @@ class MainWindow(QWidget):
         QWidget.__init__(self)
         self.setWindowTitle("RGB2LAB GUI")
 
-        w = self.parameters = QLabel("sRGB gamut, D65 illuminant, 2° observer")
+        self.colorSpaceName = "CIELAB"
+
+        w = self.parameterLabel = QLabel("sRGB gamut, D65 illuminant, 2° observer")
         w.setAlignment(Qt.AlignHCenter)
 
         w = self.graphClickLabel = QLabel("Left-click on any graph to move the focus, right-click to save")
@@ -41,12 +44,14 @@ class MainWindow(QWidget):
         edit.setPlaceholderText("out of gamut")
         label.setBuddy(edit)
 
-        def colorLabels(chars): return [QLabel("<font color='green'>&" + c + "</font>:") for c in chars]
-        def plainLabels(chars): return [QLabel("&" + c + ":") for c in chars]
+        def colorLabels(chars):
+            return [QLabel("<font color='green'>&" + c + "</font>:") for c in chars]
+        def plainLabels(chars):
+            return [QLabel("&" + c + ":") for c in chars]
 
-        self.systemOrder = ("RGB", "Lab", "LCh")
-        self.updateFromFnSeq = (self.updateFromRgb, self.updateFromLab, self.updateFromLch)
-        self.spinLabels = colorLabels("RGB") + plainLabels("Lab") + colorLabels("LCh")
+        self.colorNotationTypes = ("RGB", "LAB", "LCH")
+        self.updateFromFunctions = (self.updateFromRgb, self.updateFromLab, self.updateFromLch)
+        self.spinLabels = colorLabels("RGB") + plainLabels("LAB") + colorLabels("LCH")
 
         self.spinBoxes = [QSpinBox() for l in self.spinLabels]
         for label, box in zip(self.spinLabels, self.spinBoxes):
@@ -54,12 +59,12 @@ class MainWindow(QWidget):
 
         for box, maxVal in zip(self.spinBoxes, (255, 255, 255, 100, 128, 128, 100, 180, 359)):
             box.setMaximum(maxVal)
-        for i in 4, 5: # a and b positions
+        for i in 4, 5:  # a and b positions
             self.spinBoxes[i].setMinimum(-128)
-        for box in self.spinBoxes[:3]: # RGB positions
+        for box in self.spinBoxes[:3]:  # RGB positions
             box.setMinimum(-1)
             box.setSpecialValueText("oog")
-        box = self.spinBoxes[-1] # h position
+        box = self.spinBoxes[-1]  # H position
         box.setMinimum(-1)
         box.setSpecialValueText("nil")
         box.setWrapping(True)
@@ -78,7 +83,7 @@ class MainWindow(QWidget):
         self.labMultiGraph2D = LabMultiGraph2D(self)
 
         l = self.layout1 = QVBoxLayout()
-        l.addWidget(self.parameters)
+        l.addWidget(self.parameterLabel)
         l.addSpacing(heightOfGraph1D)
         l.addLayout(self.inputGrid)
 
@@ -102,23 +107,18 @@ class MainWindow(QWidget):
         self.setLayout(l)
 
         self.makeColorConnections()
-        #for slot in self.labMultiGraph1D.setVisible, self.labMultiGraph2D.setVisible, self.activateWindow, self.raise_, self.rgbHexInput.setFocus:
-            #self.showGraphsCheckBox.clicked.connect(slot)
 
         self.rgbHexInput.setText("45aa45")
-
-    #def closeEvent(self, event):
-        #self.labMultiGraph1D.close()
-        #self.labMultiGraph2D.close()
 
     def makeColorConnections(self):
         self.rgbHexInput.textChanged.connect(self.updateFromRgb)
         for i, box in enumerate(self.spinBoxes):
-            box.valueChanged.connect(self.updateFromFnSeq[i // 3])
+            box.valueChanged.connect(self.updateFromFunctions[i // 3])
 
     def breakColorConnections(self):
         self.rgbHexInput.textChanged.disconnect()
-        for b in self.spinBoxes: b.valueChanged.disconnect()
+        for b in self.spinBoxes:
+            b.valueChanged.disconnect()
 
     def changeLabelColor(self, start, toColor):
         fromColor = "green" if toColor == "red" else "red"
@@ -130,23 +130,24 @@ class MainWindow(QWidget):
         self.changeLabelColor(self.rgbHexLabel, "green")
         self.rgbHexInput.setText("" if -1 in rgb else "".join(hex(c)[2:].zfill(2) for c in rgb))
 
-    def writeSpins(self, colorSystem, vals):
-        start = self.systemOrder.index(colorSystem) * 3
+    def writeSpins(self, colorNotation, vals):
+        start = self.colorNotationTypes.index(colorNotation) * 3
         for i in range(3):
-            if colorSystem in ("RGB", "LCh"): self.changeLabelColor(self.spinLabels[start + i], "green")
+            if colorNotation in ("RGB", "LCH"):
+                self.changeLabelColor(self.spinLabels[start + i], "green")
             self.spinBoxes[start + i].setValue(vals[i])
 
-    def readSpins(self, colorSystem):
-        start = self.systemOrder.index(colorSystem) * 3
+    def readSpins(self, colorNotation):
+        start = self.colorNotationTypes.index(colorNotation) * 3
         x, y, z = map(QSpinBox.value, self.spinBoxes[start : start + 3])
         # handle invalid input values
-        if colorSystem == "RGB":
+        if colorNotation == "RGB":
             if -1 in (x, y, z):
                 self.changeLabelColor(start, "red")
                 raise InvalidInputError
             else:
                 self.changeLabelColor(start, "green")
-        elif colorSystem == "LCh":
+        elif colorNotation == "LCH":
             if z == -1 and y != 0:
                 self.changeLabelColor(start, "red")
                 raise InvalidInputError
@@ -155,18 +156,18 @@ class MainWindow(QWidget):
         return x, y, z
 
     def updateFromRgb(self, rgbInput):
-        if type(rgbInput) is str: # signal came from rgbHexInput
-            if len(rgbInput) != 6: # don't compute until full rgb code is input
+        if type(rgbInput) is str:  # signal came from rgbHexInput
+            if len(rgbInput) != 6:  # don't compute until full rgb code is input
                 self.changeLabelColor(self.rgbHexLabel, "red")
                 return
             else:
                 self.changeLabelColor(self.rgbHexLabel, "green")
                 rgb = tuple(int(rgbInput[i * 2 : i * 2 + 2], 16) for i in range(3))
-        else: # signal came from one of the RGB spins
+        else:  # signal came from one of the RGB spins
             try:
                 rgb = self.readSpins("RGB")
             except InvalidInputError:
-                return # don't compute
+                return  # don't compute
         lab, lch = labLchFromRgbInt(rgb)
         self.labMultiGraph1D.setValues(lab, lch)
         self.labMultiGraph2D.setValues(lab, lch)
@@ -175,38 +176,38 @@ class MainWindow(QWidget):
             self.writeSpins("RGB", rgb)
         else:
             self.writeRgbText(rgb)
-        self.writeSpins("LCh", lch)
-        self.writeSpins("Lab", lab)
+        self.writeSpins("LCH", lch)
+        self.writeSpins("LAB", lab)
         self.updateColor()
         self.makeColorConnections()
 
     def updateFromLab(self):
         try:
-            lab = self.readSpins("Lab")
+            lab = self.readSpins("LAB")
         except InvalidInputError:
-            return # don't compute
+            return  # don't compute
         rgb, lch = rgbLchFromLabInt(lab)
         self.labMultiGraph1D.setValues(lab, lch)
         self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         self.writeRgbText(rgb)
         self.writeSpins("RGB", rgb)
-        self.writeSpins("LCh", lch)
+        self.writeSpins("LCH", lch)
         self.updateColor()
         self.makeColorConnections()
 
     def updateFromLch(self):
         try:
-            lch = self.readSpins("LCh")
+            lch = self.readSpins("LCH")
         except InvalidInputError:
-            return # don't compute
+            return  # don't compute
         rgb, lab = rgbLabFromLchInt(lch)
         self.labMultiGraph1D.setValues(lab, lch)
         self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         self.writeRgbText(rgb)
         self.writeSpins("RGB", rgb)
-        self.writeSpins("Lab", lab)
+        self.writeSpins("LAB", lab)
         self.updateColor()
         self.makeColorConnections()
 
