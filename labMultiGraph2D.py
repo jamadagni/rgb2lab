@@ -1,7 +1,8 @@
 # LabMultiGraph2D widget
 # ======================
 #
-# visualize CIE LAB/LCH colorspaces
+# visualize 2D slices of the CIELAB color space
+# in cartesian and cylindrical representations
 #
 # Copyright (C) 2019, Shriramana Sharma, samjnaa-at-gmail-dot-com
 #
@@ -11,6 +12,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from graphLabel import *
 from rgb2lab_int import *
 
 class LabGraph2D(QWidget):
@@ -20,7 +22,7 @@ class LabGraph2D(QWidget):
         assert var1Max > var1Min
         assert var2Max > var2Min
 
-        QWidget.__init__(self, multiGraph)
+        QWidget.__init__(self)
 
         self.multiGraph = multiGraph
         self.colorNotation = colorNotation
@@ -49,9 +51,8 @@ class LabGraph2D(QWidget):
         t.setInterval(100)  # msecs
         t.timeout.connect(self.redrawImage)
 
-        w = self.graph = QLabel()
-        w.setFixedSize(self.var1Span, self.var2Span)
-        w.setFrameShape(QFrame.Box)
+        w = self.graph = GraphLabel(self, self.var1Span, self.var2Span)
+        w.focusChanged.connect(self.graphFocusChanged)
 
         w = self.caption = QLabel()
         w.setAlignment(Qt.AlignHCenter)
@@ -63,14 +64,10 @@ class LabGraph2D(QWidget):
 
         self.values = None
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            pass
-        elif event.button() == Qt.RightButton:
-            fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save “{}” graph".format(self.graphName), QDir.homePath(), "PNG images (*.png)")[0]
-            if fname == "": return
-            if not self.image.save(fname, "PNG"):
-                QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the path is not writable. Please try again.")
+    def graphFocusChanged(self, x, y):
+        self.values[self.var1Name] = self.var1Min + x
+        self.values[self.var2Name] = self.var2Max - y
+        self.multiGraph.mainWindow.writeSpins(self.colorNotation, [self.values[c] for c in self.colorNotation])
 
     def redrawIfNeeded(self):
         if self.values is None:  # initial draw

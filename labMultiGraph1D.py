@@ -1,7 +1,8 @@
 # LabMultiGraph1D widget
 # ======================
 #
-# visualize CIE LAB/LCH colorspaces
+# visualize 1D slices of the CIELAB color space
+# in cartesian and cylindrical representations
 #
 # Copyright (C) 2019, Shriramana Sharma, samjnaa-at-gmail-dot-com
 #
@@ -11,6 +12,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from graphLabel import *
 from rgb2lab_int import *
 
 heightOfGraph1D = 30
@@ -21,7 +23,7 @@ class LabGraph1D(QWidget):
 
         assert varMax > varMin
 
-        QWidget.__init__(self, multiGraph)
+        QWidget.__init__(self)
 
         self.multiGraph = multiGraph
         self.colorNotation = colorNotation
@@ -46,9 +48,8 @@ class LabGraph1D(QWidget):
         t.setInterval(100)  # msecs
         t.timeout.connect(self.redrawImage)
 
-        w = self.graph = QLabel()
-        w.setFixedSize(self.varSpan, heightOfGraph1D)
-        w.setFrameShape(QFrame.Box)
+        w = self.graph = GraphLabel(self, self.varSpan, heightOfGraph1D)
+        w.focusChanged.connect(self.graphFocusChanged)
 
         w = self.caption = QLabel()
         w.setAlignment(Qt.AlignHCenter)
@@ -60,14 +61,9 @@ class LabGraph1D(QWidget):
 
         self.values = None
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            pass
-        elif event.button() == Qt.RightButton:
-            fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save “{}” graph".format(self.graphName), QDir.homePath(), "PNG images (*.png)")[0]
-            if fname == "": return
-            if not self.image.save(fname, "PNG"):
-                QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the path is not writable. Please try again.")
+    def graphFocusChanged(self, x, y):
+        self.values[self.varName] = self.varMin + x
+        self.multiGraph.mainWindow.writeSpins(self.colorNotation, [self.values[c] for c in self.colorNotation])
 
     def redrawIfNeeded(self):
         if self.values is None:  # initial draw
