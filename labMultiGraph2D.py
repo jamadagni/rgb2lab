@@ -17,14 +17,14 @@ from rgb2lab_int import *
 
 class LabGraph2D(QWidget):
 
-    def __init__(self, multiGraph, colorNotation, makeTableFn, fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max):
+    def __init__(self, mainWindow, colorNotation, makeTableFn, fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max):
 
         assert var1Max > var1Min
         assert var2Max > var2Min
 
         QWidget.__init__(self)
 
-        self.multiGraph = multiGraph
+        self.mainWindow = mainWindow
         self.colorNotation = colorNotation
         self.makeTableFn = makeTableFn
         self.fixedValName = fixedValName
@@ -67,18 +67,16 @@ class LabGraph2D(QWidget):
     def graphFocusChanged(self, x, y):
         self.values[self.var1Name] = self.var1Min + x
         self.values[self.var2Name] = self.var2Max - y
-        self.multiGraph.mainWindow.writeSpins(self.colorNotation, [self.values[c] for c in self.colorNotation])
+        self.mainWindow.writeSpins(self.colorNotation, [self.values[c] for c in self.colorNotation])
 
     def redrawIfNeeded(self):
         if self.values is None:  # initial draw
-            self.values = self.multiGraph.values.copy()
+            self.values = self.mainWindow.labchValues.copy()
             self.redrawImage()
-        elif self.values == self.multiGraph.values:
-            return  # no redraw at all
         else:
             prevFixedVal = self.values[self.fixedValName]
-            self.values = self.multiGraph.values.copy()
-            if prevFixedVal == self.multiGraph.values[self.fixedValName]:
+            self.values = self.mainWindow.labchValues.copy()
+            if prevFixedVal == self.values[self.fixedValName]:
                 self.redrawPixmap()  # no redrawImage
             else:
                 self.redrawImageTimer.start()
@@ -91,7 +89,7 @@ class LabGraph2D(QWidget):
         self.caption.setText("<b>{} = {}</b>; {}<br><b>{}%</b> of graph in gamut".format(
             self.fixedValName, fixedVal, self.axesText, coverage))
         titleText = "Graph showing sRGB gamut of {} colorspace {} representation 2D slice at {} = {}".format(
-            self.multiGraph.mainWindow.colorSpaceName, "cylindrical" if self.colorNotation == "LCH" else "cartesian",
+            self.mainWindow.colorSpaceName, "cylindrical" if self.colorNotation == "LCH" else "cartesian",
             self.fixedValName, fixedVal)
         st = self.image.setText
         st("Title", titleText)
@@ -128,14 +126,12 @@ class LabMultiGraph2D(QWidget):
 
         QWidget.__init__(self)
 
-        self.mainWindow = mainWindow
-
-        self.graph_ABforL = LabGraph2D(self, "LAB", makeTable_ABforL, "L", "A", -128, +128, "B", -128, +128)
-        self.graph_BLforA = LabGraph2D(self, "LAB", makeTable_BLforA, "A", "B", -128, +128, "L",    0,  100)
-        self.graph_ALforB = LabGraph2D(self, "LAB", makeTable_ALforB, "B", "A", -128, +128, "L",    0,  100)
-        self.graph_HCforL = LabGraph2D(self, "LCH", makeTable_HCforL, "L", "H",    0,  359, "C",    0,  180)
-        self.graph_HLforC = LabGraph2D(self, "LCH", makeTable_HLforC, "C", "H",    0,  359, "L",    0,  100)
-        self.graph_CLforH = LabGraph2D(self, "LCH", makeTable_CLforH, "H", "C",    0,  180, "L",    0,  100)
+        self.graph_ABforL = LabGraph2D(mainWindow, "LAB", makeTable_ABforL, "L", "A", -128, +128, "B", -128, +128)
+        self.graph_BLforA = LabGraph2D(mainWindow, "LAB", makeTable_BLforA, "A", "B", -128, +128, "L",    0,  100)
+        self.graph_ALforB = LabGraph2D(mainWindow, "LAB", makeTable_ALforB, "B", "A", -128, +128, "L",    0,  100)
+        self.graph_HCforL = LabGraph2D(mainWindow, "LCH", makeTable_HCforL, "L", "H",    0,  359, "C",    0,  180)
+        self.graph_HLforC = LabGraph2D(mainWindow, "LCH", makeTable_HLforC, "C", "H",    0,  359, "L",    0,  100)
+        self.graph_CLforH = LabGraph2D(mainWindow, "LCH", makeTable_CLforH, "H", "C",    0,  180, "L",    0,  100)
 
         self.graphs = (self.graph_ABforL, self.graph_BLforA, self.graph_ALforB, self.graph_HCforL, self.graph_HLforC, self.graph_CLforH)
 
@@ -144,7 +140,6 @@ class LabMultiGraph2D(QWidget):
             l.addWidget(graph, i % 3, i // 3, Qt.AlignCenter)
         self.setLayout(l)
 
-    def setValues(self, lab, lch):
-        self.values = dict(zip("LABLCH", lab + lch))  # doesn't matter that L will be overwritten once
+    def updateGraphs(self):
         for g in self.graphs:
             g.redrawIfNeeded()

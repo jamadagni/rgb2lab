@@ -155,6 +155,11 @@ class MainWindow(QWidget):
                 self.changeLabelColor(start, "green")
         return x, y, z
 
+    def updateLabchGraphs(self, lab, lch):
+        self.labchValues = dict(zip("LABLCH", lab + lch))  # doesn't matter that L will be overwritten once
+        self.labMultiGraph1D.updateGraphs()
+        self.labMultiGraph2D.updateGraphs()
+
     def updateFromRgb(self, rgbInput):
         if type(rgbInput) is str:  # signal came from rgbHexInput
             if len(rgbInput) != 6:  # don't compute until full rgb code is input
@@ -169,8 +174,6 @@ class MainWindow(QWidget):
             except InvalidInputError:
                 return  # don't compute
         lab, lch = labLchFromRgbInt(rgb)
-        self.labMultiGraph1D.setValues(lab, lch)
-        self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         if type(rgbInput) is str:
             self.writeSpins("RGB", rgb)
@@ -180,6 +183,7 @@ class MainWindow(QWidget):
         self.writeSpins("LAB", lab)
         self.updateColor()
         self.makeColorConnections()
+        self.updateLabchGraphs(lab, lch)
 
     def updateFromLab(self):
         try:
@@ -187,14 +191,13 @@ class MainWindow(QWidget):
         except InvalidInputError:
             return  # don't compute
         rgb, lch = rgbLchFromLabInt(lab)
-        self.labMultiGraph1D.setValues(lab, lch)
-        self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         self.writeRgbText(rgb)
         self.writeSpins("RGB", rgb)
         self.writeSpins("LCH", lch)
         self.updateColor()
         self.makeColorConnections()
+        self.updateLabchGraphs(lab, lch)
 
     def updateFromLch(self):
         try:
@@ -202,14 +205,13 @@ class MainWindow(QWidget):
         except InvalidInputError:
             return  # don't compute
         rgb, lab = rgbLabFromLchInt(lch)
-        self.labMultiGraph1D.setValues(lab, lch)
-        self.labMultiGraph2D.setValues(lab, lch)
         self.breakColorConnections()
         self.writeRgbText(rgb)
         self.writeSpins("RGB", rgb)
         self.writeSpins("LAB", lab)
         self.updateColor()
         self.makeColorConnections()
+        self.updateLabchGraphs(lab, lch)
 
     def updateColor(self):
         self.colorDisplay.setColor(QColor(Qt.transparent) if self.rgbHexInput.text() == "" else QColor.fromRgb(*self.readSpins("RGB")))
