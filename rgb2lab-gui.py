@@ -108,6 +108,7 @@ class MainWindow(QWidget):
 
         self.makeColorConnections()
 
+        self.lastImageSaveDir = QDir.homePath()
         self.rgbHexInput.setText("45aa45")
 
     def makeColorConnections(self):

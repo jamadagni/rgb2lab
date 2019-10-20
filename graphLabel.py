@@ -24,9 +24,10 @@ class GraphLabel(QLabel):
         if event.button() == Qt.LeftButton:
             self.focusChanged.emit(event.pos().x(), event.pos().y())
         elif event.button() == Qt.RightButton:
-            fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save “{}” graph".format(self.graphParent.graphName), QDir.homePath(), "PNG images (*.png)")[0]
+            fname = QFileDialog.getSaveFileName(self, "RGB2LAB GUI: Save “{}” graph".format(self.graphParent.graphName), self.graphParent.mainWindow.lastImageSaveDir, "PNG images (*.png)")[0]
             if fname == "":
                 return
             if not self.graphParent.image.save(fname, "PNG"):
                 QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the path is not writable. Please try again.")
+            self.graphParent.mainWindow.lastImageSaveDir = fname[ : fname.rindex(QDir.separator())]
 
