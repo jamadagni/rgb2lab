@@ -136,19 +136,9 @@ class LabMultiGraph1D(QWidget):
 
         self.graphs = (self.graph_LforAB, self.graph_AforBL, self.graph_BforAL, self.graph_LforHC, self.graph_CforHL, self.graph_HforCL)
 
-        l = self.leftLayout = QVBoxLayout()
-        l.addWidget(self.graph_LforAB)
-        l.addWidget(self.graph_AforBL)
-        l.addWidget(self.graph_BforAL)
-
-        l = self.rightLayout = QVBoxLayout()
-        l.addWidget(self.graph_LforHC)
-        l.addWidget(self.graph_CforHL)
-        l.addWidget(self.graph_HforCL)
-
-        l = self.mainLayout = QHBoxLayout()
-        l.addLayout(self.leftLayout)
-        l.addLayout(self.rightLayout)
+        l = self.mainLayout = QGridLayout()
+        for i, graph in enumerate(self.graphs):
+            l.addWidget(graph, i % 3, i // 3, Qt.AlignCenter)
         self.setLayout(l)
 
     def setValues(self, lab, lch):
