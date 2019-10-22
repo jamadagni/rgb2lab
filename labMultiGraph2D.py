@@ -12,10 +12,10 @@
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from graphLabel import *
+from labGraphCommon import *
 from rgb2lab_int import *
 
-class LabGraph2D(QWidget):
+class LabGraph2D(QWidget, HueOffsetInterface):
 
     def __init__(self, mainWindow, colorNotation, makeTableFn, fixedValName, var1Name, var1Min, var1Max, var2Name, var2Min, var2Max):
 
@@ -36,36 +36,34 @@ class LabGraph2D(QWidget):
         self.var2Max = var2Max
 
         self.graphName = "{}{} for fixed {}".format(var1Name, var2Name, fixedValName)
-        self.var1Span = var1Max - var1Min + 1
-        self.var2Span = var2Max - var2Min + 1
-        self.totalPoints = self.var1Span * self.var2Span
+        self.xSpan = var1Max - var1Min + 1
+        self.ySpan = var2Max - var2Min + 1
+        self.totalPoints = self.xSpan * self.ySpan
+        self.xIsH = var1Name == "H"
 
-        # for caption below and QImage metadata
-        self.axesText = "X: {} [{} to {}], Y: {} [{} to {}]".format(var1Name, var1Min, var1Max, var2Name, var2Min, var2Max)
-
-        i = self.image = QImage(self.var1Span, self.var2Span, QImage.Format_ARGB32)
+        i = self.image = QImage(self.xSpan, self.ySpan, QImage.Format_ARGB32)
         i.setText("Software", "RGB2LAB GUI, © 2019, Shriramana Sharma; GPLv3; using Qt 5 via PyQt 5")
         i.setText("Disclaimer", "Although every effort is made to ensure accuracy, as per the terms of the GPLv3, no guarantee is provided.")
 
-        t = self.redrawImageTimer = QTimer()  # to delay redraw to avoid costly recalc while typing, fast spinning etc
+        t = self.redrawImageTimer = QTimer()
         t.setInterval(100)  # msecs
         t.timeout.connect(self.redrawImage)
 
-        w = self.graph = GraphLabel(self, self.var1Span, self.var2Span)
+        w = self.graph = GraphLabel(self, self.xSpan, self.ySpan)
         w.focusChanged.connect(self.graphFocusChanged)
 
-        w = self.caption = QLabel()
+        w = self.captionLabel = QLabel()
         w.setAlignment(Qt.AlignHCenter)
 
         l = self.mainLayout = QVBoxLayout()
         l.addWidget(self.graph, 0, Qt.AlignHCenter)
-        l.addWidget(self.caption, 0, Qt.AlignHCenter)
+        l.addWidget(self.captionLabel, 0, Qt.AlignHCenter)
         self.setLayout(l)
 
         self.values = None
 
     def graphFocusChanged(self, x, y):
-        self.values[self.var1Name] = self.var1Min + x
+        self.values[self.var1Name] = self.applyHueOffset(self.var1Min + x, self.DATA_FROM_DISPLAY)
         self.values[self.var2Name] = self.var2Max - y
         self.mainWindow.writeSpins(self.colorNotation, [self.values[c] for c in self.colorNotation])
 
@@ -86,27 +84,32 @@ class LabGraph2D(QWidget):
         fixedVal = self.values[self.fixedValName]
         table = self.makeTableFn(fixedVal)
         coverage = round(100 * table.inGamutCount / self.totalPoints, 2)
-        self.caption.setText("<b>{} = {}</b>; {}<br><b>{}%</b> of graph in gamut".format(
-            self.fixedValName, fixedVal, self.axesText, coverage))
+        axesText = "X: {} [{} to {}], Y: {} [{} to {}]".format(self.var1Name,
+                                                               self.applyHueOffset(self.var1Min, self.DATA_FROM_DISPLAY),
+                                                               self.applyHueOffset(self.var1Max, self.DATA_FROM_DISPLAY),
+                                                               self.var2Name, self.var2Min, self.var2Max)
+        self.captionLabel.setText("<b>{} = {}</b>; {}<br><b>{}%</b> of graph in gamut".format(
+            self.fixedValName, fixedVal, axesText, coverage))
         titleText = "Graph showing sRGB gamut of {} colorspace {} representation 2D slice at {} = {}".format(
             self.mainWindow.colorSpaceName, "cylindrical" if self.colorNotation == "LCH" else "cartesian",
             self.fixedValName, fixedVal)
         st = self.image.setText
         st("Title", titleText)
-        st("Description", titleText + "; Axes: {}; Coverage: {}% of graph in gamut; Parameters: D65 illuminant, 2 deg. observer".format(self.axesText, coverage))
+        st("Description", titleText + "; Axes: {}; Coverage: {}% of graph in gamut; Parameters: D65 illuminant, 2 deg. observer".format(axesText, coverage))
         st("Creation Time", QDateTime.currentDateTime().toString(Qt.ISODate))
-        for var1 in range(self.var1Span):
-            for var2 in range(self.var2Span):
-                rgb = table[var1][var2]
-                self.image.setPixel(var1, self.var2Span - 1 - var2, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent)
-                # var2Span - 1 - var2 needed since we want var2 to increase upwards but Y value increases downwards
+        for x in range(self.xSpan):
+            xForDisplay = self.applyHueOffset(x, self.DISPLAY_FROM_DATA)
+            for y in range(self.ySpan):
+                rgb = table[x][y]
+                self.image.setPixel(xForDisplay, self.ySpan - 1 - y, qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent)
+                # ySpan - 1 - y needed since we want y to increase upwards but in QImage it increases downwards
         self.redrawPixmap()
 
     def redrawPixmap(self):
         pixmap = QPixmap.fromImage(self.image)
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        target = QPoint(self.values[self.var1Name] - self.var1Min, self.var2Max - self.values[self.var2Name])
+        target = QPoint(self.applyHueOffset(self.values[self.var1Name] - self.var1Min, self.DISPLAY_FROM_DATA), self.var2Max - self.values[self.var2Name])
         painter.setPen(QColor(Qt.white))
         painter.drawEllipse(target, 11, 11)  # outer circle with inner plus
         for end in (QPoint(4, 0), QPoint(0, 4)):
@@ -140,6 +143,15 @@ class LabMultiGraph2D(QWidget):
             l.addWidget(graph, i % 3, i // 3, Qt.AlignCenter)
         self.setLayout(l)
 
+        t = self.rotateHueImageTimer = QTimer()
+        t.setInterval(100)  # msecs
+        t.timeout.connect(self.rotateHueImages)
+
     def updateGraphs(self):
         for g in self.graphs:
             g.redrawIfNeeded()
+
+    def rotateHueImages(self):
+        self.rotateHueImageTimer.stop()
+        for g in self.graph_HCforL, self.graph_HLforC:
+            g.redrawImage()  # slightly inefficient as recalculates data but easiest

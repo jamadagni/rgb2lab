@@ -1,5 +1,5 @@
-# GraphLabel widget
-# =================
+# GraphLabel widget and HueOffsetInterface
+# ========================================
 #
 # Copyright (C) 2019, Shriramana Sharma, samjnaa-at-gmail-dot-com
 #
@@ -31,3 +31,12 @@ class GraphLabel(QLabel):
                 QMessageBox.critical(self, "RGB2LAB GUI: Error", "Could not save the image to the chosen path. Perhaps the path is not writable. Please try again.")
             self.graphParent.mainWindow.lastImageSaveDir = fname[ : fname.rindex(QDir.separator())]
 
+class HueOffsetInterface:
+
+    DATA_FROM_DISPLAY = 1; DISPLAY_FROM_DATA = -1
+
+    def getHueOffset(self):
+        return self.mainWindow.hueOffsetSlider.value()
+
+    def applyHueOffset(self, x, direction):
+        return (x + direction * self.getHueOffset()) % 360 if self.xIsH else x

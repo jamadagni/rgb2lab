@@ -12,12 +12,12 @@
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from graphLabel import *
+from labGraphCommon import *
 from rgb2lab_int import *
 
 heightOfGraph1D = 30
 
-class LabGraph1D(QWidget):
+class LabGraph1D(QWidget, HueOffsetInterface):
 
     def __init__(self, mainWindow, colorNotation, makeTableFn, fixed1Name, fixed2Name, varName, varMin, varMax):
 
@@ -35,34 +35,32 @@ class LabGraph1D(QWidget):
         self.varMax = varMax
 
         self.graphName = "{} for fixed {}{}".format(varName, fixed1Name, fixed2Name)
-        self.varSpan = varMax - varMin + 1
+        self.xSpan = varMax - varMin + 1
+        self.xIsH = varName == "H"
 
-        # for caption below and QImage metadata
-        self.axisText = "X: {} [{} to {}]".format(varName, varMin, varMax)
-
-        i = self.image = QImage(self.varSpan, heightOfGraph1D, QImage.Format_ARGB32)
+        i = self.image = QImage(self.xSpan, heightOfGraph1D, QImage.Format_ARGB32)
         i.setText("Software", "RGB2LAB GUI, © 2019, Shriramana Sharma; GPLv3; using Qt 5 via PyQt 5")
         i.setText("Disclaimer", "Although every effort is made to ensure accuracy, as per the terms of the GPLv3, no guarantee is provided.")
 
-        t = self.redrawImageTimer = QTimer()  # to delay redraw to avoid costly recalc while typing, fast spinning etc
+        t = self.redrawImageTimer = QTimer()
         t.setInterval(100)  # msecs
         t.timeout.connect(self.redrawImage)
 
-        w = self.graph = GraphLabel(self, self.varSpan, heightOfGraph1D)
+        w = self.graph = GraphLabel(self, self.xSpan, heightOfGraph1D)
         w.focusChanged.connect(self.graphFocusChanged)
 
-        w = self.caption = QLabel()
+        w = self.captionLabel = QLabel()
         w.setAlignment(Qt.AlignHCenter)
 
         l = self.mainLayout = QVBoxLayout()
         l.addWidget(self.graph, 0, Qt.AlignHCenter)
-        l.addWidget(self.caption, 0, Qt.AlignHCenter)
+        l.addWidget(self.captionLabel, 0, Qt.AlignHCenter)
         self.setLayout(l)
 
         self.values = None
 
     def graphFocusChanged(self, x, y):
-        self.values[self.varName] = self.varMin + x
+        self.values[self.varName] = self.applyHueOffset(self.varMin + x, self.DATA_FROM_DISPLAY)
         self.mainWindow.writeSpins(self.colorNotation, [self.values[c] for c in self.colorNotation])
 
     def redrawIfNeeded(self):
@@ -84,28 +82,32 @@ class LabGraph1D(QWidget):
         fixed1 = self.values[self.fixed1Name]
         fixed2 = self.values[self.fixed2Name]
         table = self.makeTableFn(fixed1, fixed2)
-        coverage = round(100 * table.inGamutCount / self.varSpan, 2)
-        self.caption.setText("<b>{} = {}; {} = {}</b>; {}<br><b>{}%</b> of graph in gamut".format(
-            self.fixed1Name, fixed1, self.fixed2Name, fixed2, self.axisText, coverage))
+        coverage = round(100 * table.inGamutCount / self.xSpan, 2)
+        axisText = "X: {} [{} to {}]".format(self.varName,
+                                             self.applyHueOffset(self.varMin, self.DATA_FROM_DISPLAY),
+                                             self.applyHueOffset(self.varMax, self.DATA_FROM_DISPLAY))
+        self.captionLabel.setText("<b>{} = {}; {} = {}</b>; {}<br><b>{}%</b> of graph in gamut".format(
+            self.fixed1Name, fixed1, self.fixed2Name, fixed2, axisText, coverage))
         titleText = "Graph showing sRGB gamut of {} colorspace {} representation 1D slice at {} = {}, {} = {}".format(
             self.mainWindow.colorSpaceName, "cylindrical" if self.colorNotation == "LCH" else "cartesian",
             self.fixed1Name, fixed1, self.fixed2Name, fixed2)
         st = self.image.setText
         st("Title", titleText)
-        st("Description", titleText + "; Axis: {}; Coverage: {}% of graph in gamut; Parameters: D65 illuminant, 2 deg. observer".format(self.axisText, coverage))
+        st("Description", titleText + "; Axis: {}; Coverage: {}% of graph in gamut; Parameters: D65 illuminant, 2 deg. observer".format(axisText, coverage))
         st("Creation Time", QDateTime.currentDateTime().toString(Qt.ISODate))
-        for var in range(self.varSpan):
-            rgb = table[var]
+        for x in range(self.xSpan):
+            rgb = table[x]
             pix = qRgb(rgb.r, rgb.g, rgb.b) if rgb.valid else Qt.transparent
-            for ht in range(heightOfGraph1D):
-                self.image.setPixel(var, ht, pix)
+            xForDisplay = self.applyHueOffset(x, self.DISPLAY_FROM_DATA)
+            for y in range(heightOfGraph1D):
+                self.image.setPixel(xForDisplay, y, pix)
         self.redrawPixmap()
 
     def redrawPixmap(self):
         pixmap = QPixmap.fromImage(self.image)
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        target = QPoint(self.values[self.varName] - self.varMin, heightOfGraph1D // 2)
+        target = QPoint(self.applyHueOffset(self.values[self.varName] - self.varMin, self.DISPLAY_FROM_DATA), heightOfGraph1D // 2)
         painter.setPen(QColor(Qt.white))  # inner ticks
         off = QPoint(0, 4)
         painter.drawLine(target, target - off)
@@ -137,6 +139,14 @@ class LabMultiGraph1D(QWidget):
             l.addWidget(graph, i % 3, i // 3, Qt.AlignCenter)
         self.setLayout(l)
 
+        t = self.rotateHueImageTimer = QTimer()
+        t.setInterval(100)  # msecs
+        t.timeout.connect(self.rotateHueImages)
+
     def updateGraphs(self):
         for g in self.graphs:
             g.redrawIfNeeded()
+
+    def rotateHueImages(self):
+        self.rotateHueImageTimer.stop()
+        self.graph_HforCL.redrawImage()  # slightly inefficient as recalculates data but easiest

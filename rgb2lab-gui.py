@@ -38,11 +38,16 @@ class MainWindow(QWidget):
         w = self.graphClickLabel = QLabel("Left-click on any graph to move the focus, right-click to save")
         w.setAlignment(Qt.AlignHCenter)
 
-        label = self.rgbHexLabel = QLabel("<font color='green'>He&x</font>:")
-        edit = self.rgbHexInput = QLineEdit()
-        edit.setInputMask("HHHHHH")
-        edit.setPlaceholderText("out of gamut")
-        label.setBuddy(edit)
+        l = self.hueOffsetLabel = QLabel("Hue &offset:")
+        w = self.hueOffsetSlider = QSlider(Qt.Horizontal)
+        w.setRange(0, 359)
+        l.setBuddy(w)
+
+        l = self.rgbHexLabel = QLabel("<font color='green'>He&x</font>:")
+        w = self.rgbHexInput = QLineEdit()
+        w.setInputMask("HHHHHH")
+        w.setPlaceholderText("out of gamut")
+        l.setBuddy(w)
 
         def colorLabels(chars):
             return [QLabel("<font color='green'>&" + c + "</font>:") for c in chars]
@@ -92,10 +97,16 @@ class MainWindow(QWidget):
         l.addSpacing(heightOfGraph1D)
         l.addWidget(self.colorDisplay)
 
+        l = self.layout3 = QHBoxLayout()
+        l.addWidget(self.hueOffsetLabel)
+        l.addWidget(self.hueOffsetSlider)
+
         l = self.leftLayout = QVBoxLayout()
         l.addStretch()
         l.addLayout(self.layout2)
         l.addSpacing(heightOfGraph1D)
+        l.addLayout(self.layout3)
+        l.addStretch()
         l.addWidget(self.graphClickLabel)
         l.addStretch()
         l.addWidget(self.labMultiGraph1D)
@@ -107,6 +118,8 @@ class MainWindow(QWidget):
         self.setLayout(l)
 
         self.makeColorConnections()
+        for multiGraph in self.labMultiGraph1D, self.labMultiGraph2D:
+            self.hueOffsetSlider.valueChanged.connect(multiGraph.rotateHueImageTimer.start)
 
         self.lastImageSaveDir = QDir.homePath()
         self.rgbHexInput.setText("45aa45")
